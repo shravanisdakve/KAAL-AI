@@ -1,0 +1,6 @@
+{
+  "name": "KAAL AI — Mini Guidance Assistant",
+  "description": "A deliberate guidance workspace featuring a deterministic rule-based guidance engine, structured insights, tactical checklists, and chat history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
