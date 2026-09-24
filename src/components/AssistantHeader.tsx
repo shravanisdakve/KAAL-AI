@@ -1,22 +1,16 @@
 import React from 'react';
-import { Menu, RotateCcw, Trash2, User } from 'lucide-react';
+import { Menu, RotateCcw, User } from 'lucide-react';
 
 interface AssistantHeaderProps {
   onToggleSidebar: () => void;
   onReset: () => void;
-  onDeleteActiveSession?: () => void;
-  onOpenShortcuts: () => void;
   isMobile: boolean;
-  hasActiveSession?: boolean;
 }
 
 export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onToggleSidebar,
   onReset,
-  onDeleteActiveSession,
-  onOpenShortcuts,
   isMobile,
-  hasActiveSession = false,
 }) => {
   return (
     <header className="h-14 border-b border-gray-200/80 bg-white/90 backdrop-blur-md px-4 flex items-center justify-between shrink-0 select-none">
@@ -50,26 +44,6 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={onOpenShortcuts}
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-lg transition cursor-pointer"
-          title="Command Menu / Shortcuts"
-        >
-          <span className="text-[11px]">⌘</span>
-          <span>+</span>
-          <span>K</span>
-        </button>
-
-        {hasActiveSession && onDeleteActiveSession && (
-          <button
-            onClick={onDeleteActiveSession}
-            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-            title="Delete current conversation"
-            aria-label="Delete current conversation"
-          >
-            <Trash2 size={16} />
-          </button>
-        )}
 
         <button
           onClick={onReset}

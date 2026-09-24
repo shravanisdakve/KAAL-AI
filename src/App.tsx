@@ -225,9 +225,6 @@ export default function App() {
         <AssistantHeader
           onToggleSidebar={() => setIsMobileSidebarOpen(true)}
           onReset={handleNewConversation}
-          onDeleteActiveSession={() => activeSessionId && handleDeleteSession(activeSessionId)}
-          hasActiveSession={!!activeSession}
-          onOpenShortcuts={() => setIsShortcutsOpen(true)}
           isMobile={isMobile}
         />
 
