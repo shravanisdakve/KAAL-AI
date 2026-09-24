@@ -3,13 +3,13 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react';
 import { GuidanceSession } from '../types/guidance.ts';
 import { KaalAvatar } from './KaalAvatar.tsx';
 import { PersonalSpace } from './PersonalSpace.tsx';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal.tsx';
 
 interface SidebarProps {
   sessions: GuidanceSession[];
@@ -36,7 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobile,
   onCloseMobile,
 }) => {
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [sessionToDeleteId, setSessionToDeleteId] = useState<number | null>(null);
+  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
 
   // Categorize sessions into Today, Yesterday, Earlier
   const categorizeSessions = () => {
@@ -95,6 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <button
+                  type="button"
                   onClick={() => {
                     onSelectSession(session.id);
                     if (isMobile) onCloseMobile();
@@ -106,9 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
 
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDeleteSession(session.id);
+                    setSessionToDeleteId(session.id);
                   }}
                   className={`opacity-0 group-hover:opacity-100 p-1 rounded-md transition-opacity cursor-pointer shrink-0 ${
                     isActive
@@ -155,16 +158,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {isMobile ? (
           <button
+            type="button"
             onClick={onCloseMobile}
-            className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition"
+            className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition cursor-pointer"
             aria-label="Close menu"
           >
             <X size={18} />
           </button>
         ) : (
           <button
+            type="button"
             onClick={onToggle}
-            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition cursor-pointer"
             title="Collapse sidebar"
           >
             <PanelLeftClose size={18} />
@@ -175,6 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* New Conversation Button */}
       <div className="p-3 space-y-2">
         <button
+          type="button"
           onClick={() => {
             onNewConversation();
             if (isMobile) onCloseMobile();
@@ -187,39 +193,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Clear All History Button */}
         {sessions.length > 0 && (
-          <div>
-            {!showClearConfirm ? (
-              <button
-                onClick={() => setShowClearConfirm(true)}
-                className="w-full text-xs text-gray-500 hover:text-red-600 hover:bg-red-50/60 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <Trash2 size={13} />
-                <span>Clear All History</span>
-              </button>
-            ) : (
-              <div className="flex items-center justify-between bg-red-50 border border-red-200/80 rounded-xl p-2 text-xs">
-                <span className="text-red-700 font-medium">Delete all history?</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      onClearAllHistory();
-                      setShowClearConfirm(false);
-                      if (isMobile) onCloseMobile();
-                    }}
-                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md text-[11px] transition cursor-pointer"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={() => setShowClearConfirm(false)}
-                    className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-[11px] transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsClearAllModalOpen(true)}
+            className="w-full text-xs text-gray-500 hover:text-red-600 hover:bg-red-50/60 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <Trash2 size={13} />
+            <span>Clear All History</span>
+          </button>
         )}
       </div>
 
@@ -236,59 +217,85 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Bottom Profile Rail */}
+      {/* Personal Space Rail Footer Card */}
       <div className="p-3 border-t border-gray-200/80 mt-auto bg-[#fafbfa]">
         <PersonalSpace isCollapsed={false} />
       </div>
     </div>
   );
 
-  if (isMobile) {
-    if (!isOpen) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex">
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-xs transition-opacity"
-          onClick={onCloseMobile}
-        />
-        <div className="relative z-10 h-full w-72 max-w-[85vw] shadow-xl">
+  return (
+    <>
+      {/* Confirmation Modals */}
+      <DeleteConfirmationModal
+        isOpen={sessionToDeleteId !== null}
+        type="single"
+        onConfirm={() => {
+          if (sessionToDeleteId !== null) {
+            onDeleteSession(sessionToDeleteId);
+            setSessionToDeleteId(null);
+          }
+        }}
+        onCancel={() => setSessionToDeleteId(null)}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={isClearAllModalOpen}
+        type="all"
+        onConfirm={() => {
+          onClearAllHistory();
+          setIsClearAllModalOpen(false);
+          if (isMobile) onCloseMobile();
+        }}
+        onCancel={() => setIsClearAllModalOpen(false)}
+      />
+
+      {/* Mobile Drawer */}
+      {isMobile && isOpen && (
+        <div className="fixed inset-0 z-40 flex">
+          <div
+            className="fixed inset-0 bg-black/30 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+          />
+          <div className="relative z-10 h-full w-72 max-w-[85vw] shadow-xl">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Collapsed Rail */}
+      {!isMobile && !isOpen && (
+        <div className="w-14 h-full bg-[#fbfcfb] border-r border-gray-200/80 flex flex-col items-center py-4 select-none shrink-0 transition-all">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="p-2 text-gray-500 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition mb-4 cursor-pointer"
+            title="Expand sidebar"
+          >
+            <PanelLeftOpen size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={onNewConversation}
+            className="p-2.5 bg-[#c5e8d5] text-[#114936] rounded-xl hover:bg-[#b5dec7] transition shadow-2xs mb-4 cursor-pointer"
+            title="New Conversation"
+          >
+            <Plus size={16} strokeWidth={2.2} />
+          </button>
+
+          <div className="flex-1" />
+
+          <PersonalSpace isCollapsed={true} />
+        </div>
+      )}
+
+      {/* Desktop Expanded Sidebar */}
+      {!isMobile && isOpen && (
+        <div className="h-full shrink-0 select-none transition-all">
           {sidebarContent}
         </div>
-      </div>
-    );
-  }
-
-  // Desktop collapsed rail
-  if (!isOpen) {
-    return (
-      <div className="w-14 h-full bg-[#fbfcfb] border-r border-gray-200/80 flex flex-col items-center py-4 select-none shrink-0 transition-all">
-        <button
-          onClick={onToggle}
-          className="p-2 text-gray-500 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition mb-4"
-          title="Expand sidebar"
-        >
-          <PanelLeftOpen size={18} />
-        </button>
-
-        <button
-          onClick={onNewConversation}
-          className="p-2.5 bg-[#c5e8d5] text-[#114936] rounded-xl hover:bg-[#b5dec7] transition shadow-2xs mb-4"
-          title="New Conversation"
-        >
-          <Plus size={16} strokeWidth={2.2} />
-        </button>
-
-        <div className="flex-1" />
-
-        <PersonalSpace isCollapsed={true} />
-      </div>
-    );
-  }
-
-  // Desktop expanded sidebar
-  return (
-    <div className="h-full shrink-0 select-none transition-all">
-      {sidebarContent}
-    </div>
+      )}
+    </>
   );
 };
