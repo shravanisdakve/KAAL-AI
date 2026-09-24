@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpRight, Compass, Sparkles, Target, Zap } from 'lucide-react';
+import { KaalAvatar } from './KaalAvatar.tsx';
 
 interface EmptyStateProps {
   onSelectPrompt: (promptText: string) => void;
@@ -35,6 +36,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onSelectPrompt }) => {
 
   return (
     <div className="flex-1 flex flex-col justify-center items-center text-center px-4 py-8 max-w-2xl mx-auto select-none">
+      {/* Krishna / KAAL AI Emblem */}
+      <div className="mb-4">
+        <KaalAvatar size="lg" className="w-14 h-14 ring-4 ring-emerald-500/20 shadow-md" />
+      </div>
+
       {/* Small Eyebrow */}
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[11px] font-semibold tracking-widest uppercase mb-4">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />

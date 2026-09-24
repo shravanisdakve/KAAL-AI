@@ -132,17 +132,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <div className="flex flex-col h-full bg-[#fbfcfb] border-r border-gray-200/80 w-72 select-none">
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => {
+            onNewConversation();
+            if (isMobile) onCloseMobile();
+          }}
+          aria-label="Go to KAAL AI home"
+          className="flex items-center gap-2.5 p-1.5 -ml-1.5 rounded-xl hover:bg-gray-100/80 active:bg-gray-200/60 transition cursor-pointer text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/50 group"
+          title="Go to KAAL AI home"
+        >
           <KaalAvatar size="sm" />
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-900 tracking-tight text-sm leading-none">
+            <span className="font-semibold text-gray-900 tracking-tight text-sm leading-none group-hover:text-black">
               KAAL AI
             </span>
-            <span className="text-[10px] text-gray-500 font-normal leading-tight mt-0.5">
+            <span className="text-[10px] text-gray-500 font-normal leading-tight mt-0.5 group-hover:text-gray-700">
               Your space for clarity
             </span>
           </div>
-        </div>
+        </button>
 
         {isMobile ? (
           <button

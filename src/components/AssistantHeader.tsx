@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, RotateCcw, User, Settings, ShieldCheck, LogOut, CheckCircle2 } from 'lucide-react';
+import { KaalAvatar } from './KaalAvatar.tsx';
 
 interface AssistantHeaderProps {
   onToggleSidebar: () => void;
@@ -68,6 +69,8 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
           </button>
         )}
 
+        <KaalAvatar size="sm" />
+
         <div className="flex flex-col">
           <span className="font-semibold text-gray-900 text-sm tracking-tight leading-none">
             KAAL AI
@@ -135,7 +138,7 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
                     <User size={14} className="text-gray-500" />
                     <span>My Account</span>
                   </div>
-                  <span className="text-[10px] text-gray-400">KL</span>
+                  <span className="text-[10px] text-gray-400">SD</span>
                 </button>
 
                 <button

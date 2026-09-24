@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Check,
-  CheckSquare,
-  ChevronDown,
-  ChevronUp,
-  MousePointerClick,
-  Square,
-} from 'lucide-react';
-import { StructuredGuidanceResponse, TacticalStep } from '../types/guidance.ts';
+import { StructuredGuidanceResponse } from '../types/guidance.ts';
 import { KaalAvatar } from './KaalAvatar.tsx';
 
 interface GuidanceCardProps {
@@ -16,233 +8,124 @@ interface GuidanceCardProps {
   timestamp?: string;
 }
 
+// Category-tailored reflective questions echoing KAAL AI's sanctuary of reflection
+const REFLECTIVE_PROMPTS: Record<string, string> = {
+  Clarity:
+    'What is one decision you can make today without needing to know the entire path ahead?',
+  Stress:
+    'What burden are you trying to carry today that actually belongs to tomorrow?',
+  Purpose:
+    'What brings you a quiet sense of duty and fulfillment, even when no one is watching?',
+  Relationships:
+    'How would this interaction soften if you listened to understand rather than to defend?',
+  'Fear & Uncertainty':
+    'If you recognized uncertainty as open space rather than a threat, what step would you take?',
+  Discipline:
+    'What is the smallest honest effort you can offer today, letting go of the need for perfection?',
+  Meditation:
+    'Can you give yourself permission to simply sit with this moment without evaluating or fixing it?',
+  'General Reflection':
+    'What is truly within your control right now, and what can you gently release?',
+};
+
 export const GuidanceCard: React.FC<GuidanceCardProps> = ({
   response,
+  category = 'General Reflection',
   timestamp = '10:43 AM',
 }) => {
-  // Normalize steps to TacticalStep array
-  const initialSteps: TacticalStep[] =
-    response.frameworkSteps && response.frameworkSteps.length > 0
-      ? response.frameworkSteps
-      : (response.steps || []).map((stepText, idx) => ({
-          id: idx + 1,
-          title: stepText,
-          description: stepText,
-          status: idx === 0 ? ('Active Focus' as const) : ('Pending' as const),
-          checklist: [
-            `Implement initial review for step ${idx + 1}`,
-            'Verify outcomes against target milestones',
-          ],
-        }));
+  const [imageError, setImageError] = useState(false);
 
-  const [steps, setSteps] = useState<TacticalStep[]>(initialSteps);
-  const [expandedStepId, setExpandedStepId] = useState<number | null>(
-    initialSteps.length > 0 ? initialSteps[0].id : null
-  );
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({
-    '1-0': true, // Seed first checklist item as checked like screenshot
-  });
+  // Derive reflection thought based on category or response metadata
+  const reflectionThought =
+    REFLECTIVE_PROMPTS[category] ||
+    REFLECTIVE_PROMPTS['General Reflection'];
 
-  const toggleStepAccordion = (stepId: number) => {
-    setExpandedStepId((prev) => (prev === stepId ? null : stepId));
-  };
+  // Extract clean practical next steps from response.steps or frameworkSteps
+  const nextSteps: string[] =
+    response.steps && response.steps.length > 0
+      ? response.steps
+      : response.frameworkSteps && response.frameworkSteps.length > 0
+      ? response.frameworkSteps.map((s) => s.title || s.description)
+      : [
+          'Take a quiet moment to observe what is within your control right now.',
+          'Choose one small, thoughtful action for today and begin gently.',
+          'Allow the outcome to unfold without rushing the timeline.',
+        ];
 
-  const toggleChecklistItem = (stepId: number, itemIdx: number) => {
-    const key = `${stepId}-${itemIdx}`;
-    setCheckedItems((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const toggleStepCompletion = (stepId: number) => {
-    setSteps((prev) =>
-      prev.map((step) => {
-        if (step.id === stepId) {
-          const isNowCompleted = step.status !== 'Completed';
-          return {
-            ...step,
-            status: isNowCompleted ? 'Completed' : 'Active Focus',
-          };
-        }
-        return step;
-      })
-    );
-  };
+  // Calm, serene nature image for reflection (morning stillness / quiet water landscape)
+  const calmImageUrl =
+    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80';
 
   return (
-    <div className="w-full max-w-4xl mx-auto mb-10">
-      {/* Response Header */}
+    <div className="w-full max-w-4xl mx-auto mb-10 select-text">
+      {/* Response Minimal Header */}
       <div className="flex items-center gap-2.5 mb-3 select-none">
         <KaalAvatar size="sm" />
         <span className="font-semibold text-gray-900 text-sm tracking-tight">
           KAAL AI
         </span>
-        <span className="bg-[#d7f1e4] text-[#134e38] text-xs font-medium px-2.5 py-0.5 rounded-full border border-[#c1e8d3]/60">
-          Rule-based Guidance
-        </span>
-        <span className="text-xs text-gray-400 ml-1">{timestamp}</span>
+        <span className="text-xs text-gray-400">{timestamp}</span>
       </div>
 
-      {/* Main Guidance Card */}
-      <div className="bg-white rounded-2xl border border-gray-200/90 p-6 md:p-7 shadow-xs">
-        {/* Core Insight Callout with Green Vertical Bar */}
-        <div className="flex items-start mb-7 pl-1">
-          <div className="w-1 bg-[#10b981] self-stretch rounded-full mr-3.5 shrink-0" />
+      {/* Main Guidance Card — Clean, Warm, Spacious */}
+      <div className="bg-white rounded-2xl border border-stone-200/80 p-6 md:p-8 shadow-xs">
+        {/* Section 1: CORE GUIDANCE */}
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-stone-100">
           <div className="flex-1">
-            <span className="block text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-1.5 select-none">
-              CORE INSIGHT
+            <span className="block text-[11px] font-bold tracking-widest text-[#155e45] uppercase mb-2 select-none">
+              CORE GUIDANCE
             </span>
-            <p className="text-lg md:text-[19px] font-medium text-gray-900 leading-snug">
-              {response.summary || response.title}
+            <h3 className="text-lg md:text-[20px] font-medium text-gray-900 leading-snug mb-3">
+              {response.title}
+            </h3>
+            <p className="text-[15px] text-gray-700 leading-relaxed font-normal">
+              {response.summary}
+            </p>
+          </div>
+
+          {/* Subtle Visual Element — Calm Nature Landscape */}
+          {!imageError && (
+            <div className="w-full md:w-48 h-32 md:h-36 shrink-0 rounded-xl overflow-hidden shadow-2xs border border-stone-200/70 bg-stone-50 select-none">
+              <img
+                src={calmImageUrl}
+                alt="Calm natural landscape representing stillness and reflection"
+                loading="lazy"
+                onError={() => setImageError(true)}
+                className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity duration-300"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Section 2: A MOMENT TO REFLECT */}
+        <div className="py-6 border-b border-stone-100">
+          <span className="block text-[11px] font-bold tracking-widest text-[#155e45] uppercase mb-2.5 select-none">
+            A MOMENT TO REFLECT
+          </span>
+          <div className="pl-4 border-l-2 border-emerald-600/50 py-1 bg-stone-50/50 rounded-r-xl">
+            <p className="text-[15px] md:text-[16px] text-stone-800 font-normal italic leading-relaxed">
+              "{reflectionThought}"
             </p>
           </div>
         </div>
 
-        {/* Recommended Framework Header */}
-        <div className="flex items-center justify-between mb-3.5 pb-2 border-b border-gray-100 select-none">
-          <span className="text-[11px] font-bold tracking-wider text-gray-400 uppercase">
-            RECOMMENDED FRAMEWORK
+        {/* Section 3: A SIMPLE NEXT STEP */}
+        <div className="pt-6">
+          <span className="block text-[11px] font-bold tracking-widest text-[#155e45] uppercase mb-4 select-none">
+            A SIMPLE NEXT STEP
           </span>
-          <div className="flex items-center gap-1 text-xs text-gray-500 font-medium">
-            <MousePointerClick size={13} className="text-gray-400" />
-            <span>Click any step to inspect & track</span>
-          </div>
-        </div>
-
-        {/* Steps List */}
-        <div className="space-y-3">
-          {steps.map((step) => {
-            const isExpanded = expandedStepId === step.id;
-            const isCompleted = step.status === 'Completed';
-
-            return (
-              <div
-                key={step.id}
-                className={`border rounded-xl transition-all overflow-hidden ${
-                  isExpanded
-                    ? 'border-gray-300/80 bg-white shadow-xs'
-                    : 'border-gray-200/80 bg-[#fbfcfb] hover:border-gray-300'
-                }`}
-              >
-                {/* Step Accordion Header */}
-                <button
-                  onClick={() => toggleStepAccordion(step.id)}
-                  className="w-full flex items-center justify-between p-4 text-left transition select-none cursor-pointer"
-                >
-                  <div className="flex items-center gap-3.5">
-                    {/* Step Number Badge */}
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                        isCompleted
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-[#1e3a34] text-white'
-                      }`}
-                    >
-                      {isCompleted ? <Check size={13} strokeWidth={2.5} /> : step.id}
-                    </div>
-
-                    {/* Step Title */}
-                    <span
-                      className={`text-sm md:text-base font-semibold transition-colors ${
-                        isCompleted
-                          ? 'text-gray-500 line-through'
-                          : 'text-gray-900'
-                      }`}
-                    >
-                      {step.title}
-                    </span>
-
-                    {/* Status Pill */}
-                    {step.status === 'Active Focus' && !isCompleted && (
-                      <span className="inline-flex items-center gap-1 bg-[#e6f7ef] text-[#114936] text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#c6edd9]/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                        Active Focus
-                      </span>
-                    )}
-
-                    {isCompleted && (
-                      <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-[11px] font-medium px-2 py-0.5 rounded-full">
-                        Completed
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-gray-400 p-1">
-                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </div>
-                </button>
-
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <div className="px-4 pb-4 pt-1 border-t border-gray-100/80">
-                    <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                      {step.description}
-                    </p>
-
-                    {/* Tactical Checklist Box */}
-                    {step.checklist && step.checklist.length > 0 && (
-                      <div className="bg-[#f8faf9] border border-gray-200/70 rounded-xl p-3.5 mb-4">
-                        <span className="block text-[10px] font-bold tracking-wider text-gray-400 uppercase mb-2 select-none">
-                          TACTICAL CHECKLIST
-                        </span>
-                        <div className="space-y-2">
-                          {step.checklist.map((item, idx) => {
-                            const itemKey = `${step.id}-${idx}`;
-                            const isChecked = Boolean(checkedItems[itemKey]);
-                            return (
-                              <button
-                                key={idx}
-                                onClick={() => toggleChecklistItem(step.id, idx)}
-                                className="flex items-start gap-2.5 text-left w-full group cursor-pointer"
-                              >
-                                <span className="mt-0.5 text-[#1e3a34] group-hover:text-emerald-700 transition-colors">
-                                  {isChecked ? (
-                                    <CheckSquare size={16} className="text-emerald-700" />
-                                  ) : (
-                                    <Square size={16} className="text-gray-400" />
-                                  )}
-                                </span>
-                                <span
-                                  className={`text-xs md:text-sm leading-snug transition-colors ${
-                                    isChecked
-                                      ? 'text-gray-500 line-through'
-                                      : 'text-gray-800'
-                                  }`}
-                                >
-                                  {item}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step Progress & Action Footer */}
-                    <div className="flex items-center justify-between pt-2 select-none">
-                      <span className="text-xs text-gray-500 font-medium">
-                        Status:{' '}
-                        {isCompleted ? 'Milestone Achieved' : 'Milestone Progress'}
-                      </span>
-
-                      <button
-                        onClick={() => toggleStepCompletion(step.id)}
-                        className={`text-xs font-medium px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
-                          isCompleted
-                            ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                            : 'bg-[#1e3a34] hover:bg-[#152a25] text-white shadow-2xs'
-                        }`}
-                      >
-                        <Check size={14} />
-                        <span>{isCompleted ? 'Mark Incomplete' : 'Mark Complete'}</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+          <div className="space-y-3">
+            {nextSteps.slice(0, 3).map((stepText, idx) => (
+              <div key={idx} className="flex items-start gap-3">
+                <span className="text-[11px] font-mono font-medium text-emerald-800 bg-[#eaf4ee] px-2 py-0.5 rounded-md shrink-0 select-none mt-0.5">
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+                <p className="text-[14px] md:text-[15px] text-gray-700 leading-relaxed">
+                  {stepText}
+                </p>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </div>
