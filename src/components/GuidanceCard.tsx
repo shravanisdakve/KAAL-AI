@@ -28,6 +28,42 @@ const REFLECTIVE_PROMPTS: Record<string, string> = {
     'What is truly within your control right now, and what can you gently release?',
 };
 
+// Category-tailored situational images reflecting each mindset / emotion
+const SITUATION_IMAGES: Record<string, { src: string; alt: string }> = {
+  Clarity: {
+    src: '/situations/clarity.jpg',
+    alt: 'Misty mountain trail at sunrise with sunlight breaking through, representing clarity of path',
+  },
+  Stress: {
+    src: '/situations/stress.jpg',
+    alt: 'Calm emerald lake reflecting misty pine forests, bringing soothing stillness to relieve stress',
+  },
+  Purpose: {
+    src: '/situations/purpose.jpg',
+    alt: 'Vast golden horizon from a high mountain summit, inspiring deep purpose and direction',
+  },
+  Relationships: {
+    src: '/situations/relationships.jpg',
+    alt: 'Two people peacefully conversing on a bench beside a serene lake at golden hour',
+  },
+  'Fear & Uncertainty': {
+    src: '/situations/clarity.jpg',
+    alt: 'Opening sunrise through misty path, turning uncertainty into open horizon',
+  },
+  Discipline: {
+    src: '/situations/discipline.jpg',
+    alt: 'Ascending stone staircase along alpine ridge, signifying steady devotion and daily discipline',
+  },
+  Meditation: {
+    src: '/situations/meditation.jpg',
+    alt: 'Zen balance stones on still reflective water during tranquil dusk, representing meditation',
+  },
+  'General Reflection': {
+    src: '/situations/general.jpg',
+    alt: 'Soft gentle waves on a golden beach at dawn, evoking peaceful timeless reflection',
+  },
+};
+
 export const GuidanceCard: React.FC<GuidanceCardProps> = ({
   response,
   category = 'General Reflection',
@@ -36,9 +72,15 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
   const [imageError, setImageError] = useState(false);
 
   // Derive reflection thought based on category or response metadata
+  const activeCategory = response.meta?.category || category || 'General Reflection';
   const reflectionThought =
-    REFLECTIVE_PROMPTS[category] ||
+    REFLECTIVE_PROMPTS[activeCategory] ||
     REFLECTIVE_PROMPTS['General Reflection'];
+
+  // Select contextual situational image
+  const situationImage =
+    SITUATION_IMAGES[activeCategory] ||
+    SITUATION_IMAGES['General Reflection'];
 
   // Extract clean practical next steps from response.steps or frameworkSteps
   const nextSteps: string[] =
@@ -51,10 +93,6 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
           'Choose one small, thoughtful action for today and begin gently.',
           'Allow the outcome to unfold without rushing the timeline.',
         ];
-
-  // Calm, serene nature image for reflection (morning stillness / quiet water landscape)
-  const calmImageUrl =
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80';
 
   return (
     <div className="w-full max-w-4xl mx-auto mb-10 select-text">
@@ -83,12 +121,12 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
             </p>
           </div>
 
-          {/* Subtle Visual Element — Calm Nature Landscape */}
+          {/* Subtle Visual Element — Dynamic Situational Landscape */}
           {!imageError && (
             <div className="w-full md:w-48 h-32 md:h-36 shrink-0 rounded-xl overflow-hidden shadow-2xs border border-stone-200/70 bg-stone-50 select-none">
               <img
-                src={calmImageUrl}
-                alt="Calm natural landscape representing stillness and reflection"
+                src={situationImage.src}
+                alt={situationImage.alt}
                 loading="lazy"
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity duration-300"
