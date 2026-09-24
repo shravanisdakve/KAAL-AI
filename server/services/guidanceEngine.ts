@@ -3,6 +3,11 @@ import {
   StructuredGuidanceResponse,
   TacticalStep,
 } from '../types/guidance.ts';
+import { retrieveGitaShlokaRAG } from './ragEngine.ts';
+import {
+  generateConversationalGuidance,
+  synthesizeEmpatheticFallback,
+} from './conversationalEngine.ts';
 
 interface KeywordRule {
   term: string;
@@ -630,13 +635,13 @@ export function selectPattern(
 }
 
 /**
- * Primary Guidance Engine entry point
- * Deterministic, rule-based, explainable.
+ * Primary Guidance Engine entry point with RAG Shloka Retrieval & Conversational Synthesis.
+ * Incorporates Bhagavad Gita RAG retrieval with conditional relevance filtering and high-EQ conversational dialogue.
  */
-export function runGuidanceEngine(question: string): {
+export async function runGuidanceEngine(question: string): Promise<{
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;
-} {
+}> {
   const normalized = normalizeText(question);
   const scoredCategories = calculateCategoryScores(normalized);
 
@@ -648,21 +653,52 @@ export function runGuidanceEngine(question: string): {
     resolvedCategory = 'General Reflection';
   }
 
-  // Pattern selection
+  // 1. Run Bhagavad Gita RAG Retrieval Pipeline
+  const ragResult = retrieveGitaShlokaRAG(question);
+
+  // 2. Synthesize Human-Like Conversational Guidance
+  const conversational = await generateConversationalGuidance({
+    question,
+    detectedEmotion: ragResult.detectedEmotion,
+    shloka: ragResult.shloka,
+    isShlokaRelevant: ragResult.isShlokaRelevant,
+  });
+
+  // 3. Fallback Pattern Selection (for tactical steps compatibility)
   const pattern = selectPattern(resolvedCategory, normalized);
   const generated = pattern.generate(question);
 
+  const stepsToUse =
+    conversational.steps && conversational.steps.length > 0
+      ? conversational.steps
+      : generated.steps;
+
+  const frameworkStepsToUse: TacticalStep[] = generated.frameworkSteps.map((step, idx) => ({
+    ...step,
+    title: stepsToUse[idx] || step.title,
+  }));
+
   const structuredResponse: StructuredGuidanceResponse = {
-    title: generated.title,
-    summary: generated.summary,
-    steps: generated.steps,
-    frameworkSteps: generated.frameworkSteps,
+    title: conversational.title || generated.title,
+    summary: conversational.summary || generated.summary,
+    conversationalReply: conversational.conversationalReply,
+    steps: stepsToUse,
+    frameworkSteps: frameworkStepsToUse,
+    shloka: ragResult.isShlokaRelevant ? ragResult.shloka : null,
+    isShlokaRelevant: ragResult.isShlokaRelevant,
+    detectedEmotion: ragResult.detectedEmotion,
+    reflectionPrompt: conversational.reflectionPrompt,
     meta: {
       category: resolvedCategory,
-      pattern: pattern.name,
+      pattern:
+        ragResult.isShlokaRelevant && ragResult.shloka
+          ? `${ragResult.shloka.id}: ${ragResult.shloka.chapterName}`
+          : pattern.name,
       score: topCategory.score,
       matchedKeywords: topCategory.matchedKeywords,
-      engine: 'KAAL Rule-Based Guidance Engine',
+      relevanceScore: ragResult.relevanceScore,
+      retrievalEngine: 'Bhagavad Gita RAG Retrieval Engine',
+      engine: 'KAAL Hybrid RAG & Guidance Engine',
     },
   };
 
@@ -671,3 +707,69 @@ export function runGuidanceEngine(question: string): {
     response: structuredResponse,
   };
 }
+
+/**
+ * Synchronous variant for zero-latency seeding and offline fallback.
+ */
+export function runGuidanceEngineSync(question: string): {
+  category: GuidanceCategory;
+  response: StructuredGuidanceResponse;
+} {
+  const normalized = normalizeText(question);
+  const scoredCategories = calculateCategoryScores(normalized);
+
+  const topCategory = scoredCategories[0];
+  let resolvedCategory: GuidanceCategory = topCategory.category;
+  if (topCategory.score < 2) {
+    resolvedCategory = 'General Reflection';
+  }
+
+  const ragResult = retrieveGitaShlokaRAG(question);
+  const conversational = synthesizeEmpatheticFallback({
+    question,
+    detectedEmotion: ragResult.detectedEmotion,
+    shloka: ragResult.shloka,
+    isShlokaRelevant: ragResult.isShlokaRelevant,
+  });
+
+  const pattern = selectPattern(resolvedCategory, normalized);
+  const generated = pattern.generate(question);
+
+  const stepsToUse =
+    conversational.steps && conversational.steps.length > 0
+      ? conversational.steps
+      : generated.steps;
+
+  const frameworkStepsToUse: TacticalStep[] = generated.frameworkSteps.map((step, idx) => ({
+    ...step,
+    title: stepsToUse[idx] || step.title,
+  }));
+
+  return {
+    category: resolvedCategory,
+    response: {
+      title: conversational.title || generated.title,
+      summary: conversational.summary || generated.summary,
+      conversationalReply: conversational.conversationalReply,
+      steps: stepsToUse,
+      frameworkSteps: frameworkStepsToUse,
+      shloka: ragResult.isShlokaRelevant ? ragResult.shloka : null,
+      isShlokaRelevant: ragResult.isShlokaRelevant,
+      detectedEmotion: ragResult.detectedEmotion,
+      reflectionPrompt: conversational.reflectionPrompt,
+      meta: {
+        category: resolvedCategory,
+        pattern:
+          ragResult.isShlokaRelevant && ragResult.shloka
+            ? `${ragResult.shloka.id}: ${ragResult.shloka.chapterName}`
+            : pattern.name,
+        score: topCategory.score,
+        matchedKeywords: topCategory.matchedKeywords,
+        relevanceScore: ragResult.relevanceScore,
+        retrievalEngine: 'Bhagavad Gita RAG Retrieval Engine',
+        engine: 'KAAL Hybrid RAG & Guidance Engine',
+      },
+    },
+  };
+}
+

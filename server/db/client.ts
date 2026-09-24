@@ -7,7 +7,7 @@ import {
   StructuredGuidanceResponse,
 } from '../types/guidance.ts';
 import { CREATE_GUIDANCE_SESSIONS_TABLE_SQL } from './schema.ts';
-import { runGuidanceEngine } from '../services/guidanceEngine.ts';
+import { runGuidanceEngine, runGuidanceEngineSync } from '../services/guidanceEngine.ts';
 
 const { Pool } = pg;
 
@@ -121,7 +121,7 @@ class DatabaseManager {
   private async seedPostgres(client: pg.PoolClient): Promise<void> {
     const now = Date.now();
     for (const item of INITIAL_SEED_QUESTIONS) {
-      const { category, response } = runGuidanceEngine(item.question);
+      const { category, response } = await runGuidanceEngine(item.question);
       const createdAt = new Date(now - item.timeOffsetHours * 3600 * 1000).toISOString();
       await client.query(
         'INSERT INTO guidance_sessions (question, category, response, created_at) VALUES ($1, $2, $3, $4)',
@@ -148,7 +148,7 @@ class DatabaseManager {
     // Seed default items
     const now = Date.now();
     this.localStore = INITIAL_SEED_QUESTIONS.map((seed, idx) => {
-      const { category, response } = runGuidanceEngine(seed.question);
+      const { category, response } = runGuidanceEngineSync(seed.question);
       return {
         id: idx + 1,
         question: seed.question,

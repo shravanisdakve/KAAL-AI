@@ -8,6 +8,22 @@ export type GuidanceCategory =
   | 'Meditation'
   | 'General Reflection';
 
+export interface GitaShloka {
+  id: string; // e.g. "BG2.47"
+  chapter: number;
+  chapterName: string;
+  verse: number;
+  sanskrit: string;
+  transliteration: string;
+  translation: string;
+  author: string;
+  meaning: string;
+  coreWisdom: string;
+  themes: string[];
+  emotions: string[];
+  situations: string[];
+}
+
 export interface TacticalStep {
   id: number;
   title: string;
@@ -20,14 +36,21 @@ export interface TacticalStep {
 export interface StructuredGuidanceResponse {
   title: string;
   summary: string;
+  conversationalReply: string; // Natural, human-like empathetic dialogue
   steps: string[];
   frameworkSteps: TacticalStep[];
+  shloka?: GitaShloka | null; // Attached ONLY when genuinely relevant
+  isShlokaRelevant: boolean;
+  detectedEmotion?: string;
+  reflectionPrompt?: string;
   meta?: {
     category: GuidanceCategory;
     pattern: string;
     score: number;
     matchedKeywords: string[];
-    engine: 'KAAL Rule-Based Guidance Engine';
+    relevanceScore?: number;
+    retrievalEngine?: string;
+    engine: string;
   };
 }
 

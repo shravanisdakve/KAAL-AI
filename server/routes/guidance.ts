@@ -32,8 +32,8 @@ guidanceRouter.post('/', async (req: Request, res: Response, next: NextFunction)
       );
     }
 
-    // 2. Run deterministic rule-based guidance engine
-    const { category, response } = runGuidanceEngine(trimmedQuestion);
+    // 2. Run RAG retrieval and conversational guidance engine
+    const { category, response } = await runGuidanceEngine(trimmedQuestion);
 
     // 3. Save to database (PostgreSQL / resilient persistent store)
     const savedSession = await dbClient.createSession(trimmedQuestion, category, response);

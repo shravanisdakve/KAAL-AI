@@ -3,7 +3,9 @@ import {
   normalizeText,
   calculateCategoryScores,
   runGuidanceEngine,
+  runGuidanceEngineSync,
 } from '../server/services/guidanceEngine.ts';
+import { retrieveGitaShlokaRAG } from '../server/services/ragEngine.ts';
 import { dbClient } from '../server/db/client.ts';
 
 async function runTestSuite() {
@@ -11,21 +13,9 @@ async function runTestSuite() {
   let passed = 0;
   let failed = 0;
 
-  function test(name: string, fn: () => void | Promise<void>) {
+  async function test(name: string, fn: () => void | Promise<void>) {
     try {
-      const res = fn();
-      if (res instanceof Promise) {
-        return res
-          .then(() => {
-            console.log(`  ✓ ${name}`);
-            passed++;
-          })
-          .catch((err) => {
-            console.error(`  ✗ ${name}`);
-            console.error(`    Error: ${err.message}`);
-            failed++;
-          });
-      }
+      await fn();
       console.log(`  ✓ ${name}`);
       passed++;
     } catch (err: any) {
@@ -36,73 +26,119 @@ async function runTestSuite() {
   }
 
   // 1. Text Normalization
-  test('Text Normalization: cleans punctuation, lowers case, trims extra spaces', () => {
+  await test('Text Normalization: cleans punctuation, lowers case, trims extra spaces', () => {
     const raw = '  How can I   STAY CALM?! Under pressure...  ';
     const normalized = normalizeText(raw);
     assert.strictEqual(normalized, 'how can i stay calm under pressure');
   });
 
   // 2. Category Signal Scoring & Classification
-  test('Category Scoring: correctly identifies Stress signals', () => {
+  await test('Category Scoring: correctly identifies Stress signals', () => {
     const query = 'I feel completely overwhelmed by anxiety and pressure';
     const scores = calculateCategoryScores(normalizeText(query));
     assert.strictEqual(scores[0].category, 'Stress');
     assert.ok(scores[0].score > 5);
   });
 
-  test('Category Scoring: correctly identifies Clarity signals', () => {
+  await test('Category Scoring: correctly identifies Clarity signals', async () => {
     const query = 'I am so confused about which path to take in my life';
-    const { category, response } = runGuidanceEngine(query);
+    const { category, response } = await runGuidanceEngine(query);
     assert.strictEqual(category, 'Clarity');
     assert.ok(response.title.length > 0);
     assert.strictEqual(response.steps.length, 3);
   });
 
-  test('Category Scoring: correctly identifies Discipline signals', () => {
+  await test('Category Scoring: correctly identifies Discipline signals', async () => {
     const query = 'I know what to do but I keep procrastinating on my habits';
-    const { category } = runGuidanceEngine(query);
+    const { category } = await runGuidanceEngine(query);
     assert.strictEqual(category, 'Discipline');
   });
 
-  test('Category Scoring: correctly identifies Purpose / Svadharma signals', () => {
+  await test('Category Scoring: correctly identifies Purpose / Svadharma signals', async () => {
     const query = 'I am working hard but I do not know my purpose or meaning';
-    const { category } = runGuidanceEngine(query);
+    const { category } = await runGuidanceEngine(query);
     assert.strictEqual(category, 'Purpose');
   });
 
-  test('Category Scoring: correctly identifies Meditation / Stillness signals', () => {
+  await test('Category Scoring: correctly identifies Meditation / Stillness signals', async () => {
     const query = 'How do I maintain a daily meditation habit and cultivate stillness?';
-    const { category } = runGuidanceEngine(query);
+    const { category } = await runGuidanceEngine(query);
     assert.strictEqual(category, 'Meditation');
   });
 
-  test('Category Scoring: correctly falls back to General Reflection for sparse queries', () => {
+  await test('Category Scoring: correctly falls back to General Reflection for sparse queries', async () => {
     const query = 'Hello there';
-    const { category } = runGuidanceEngine(query);
+    const { category } = await runGuidanceEngine(query);
     assert.strictEqual(category, 'General Reflection');
   });
 
-  // 3. Response Structure & Gita-Grounded Architecture
-  test('Response Structure: includes Core Guidance, Steps, and Meta', () => {
-    const { response } = runGuidanceEngine('I feel overwhelmed and anxious');
-    assert.ok(response.title);
-    assert.ok(response.summary);
-    assert.ok(Array.isArray(response.steps));
-    assert.strictEqual(response.steps.length, 3);
-    assert.ok(Array.isArray(response.frameworkSteps));
-    assert.ok(response.frameworkSteps.length > 0);
-    assert.strictEqual(response.meta?.engine, 'KAAL Rule-Based Guidance Engine');
+  // 3. RAG Retrieval Pipeline & Conditional Shloka Matching
+  await test('RAG Retrieval: accurately fetches BG 2.47 for overwhelm & anxiety of results', () => {
+    const rag = retrieveGitaShlokaRAG(
+      'I feel overwhelmed by everything happening in my life. What should I do?'
+    );
+    assert.strictEqual(rag.isShlokaRelevant, true);
+    assert.ok(rag.shloka);
+    assert.strictEqual(rag.shloka?.id, 'BG2.47');
+    assert.strictEqual(rag.shloka?.chapter, 2);
+    assert.strictEqual(rag.shloka?.verse, 47);
+    assert.ok(rag.shloka?.sanskrit.includes('कर्मण्येवाधिकारस्ते'));
   });
 
-  // 4. Database Operations & Resilience
-  await test('Database: creates and retrieves a guidance session', async () => {
-    const question = 'Test session: how to overcome fear?';
-    const { category, response } = runGuidanceEngine(question);
+  await test('RAG Retrieval: accurately fetches BG 3.8 for procrastination', () => {
+    const rag = retrieveGitaShlokaRAG('I keep procrastinating on my work and habits');
+    assert.strictEqual(rag.isShlokaRelevant, true);
+    assert.ok(rag.shloka);
+    assert.strictEqual(rag.shloka?.id, 'BG3.8');
+    assert.ok(rag.shloka?.sanskrit.includes('नियतं कुरु कर्म'));
+  });
+
+  await test('RAG Conditional Relevance: does NOT force a shloka for casual greetings', () => {
+    const rag = retrieveGitaShlokaRAG('Hello, how are you?');
+    assert.strictEqual(rag.isShlokaRelevant, false);
+    assert.strictEqual(rag.shloka, null);
+  });
+
+  await test('RAG Conditional Relevance: does NOT force a shloka for meta inquiries', () => {
+    const rag = retrieveGitaShlokaRAG('What is your tech stack?');
+    assert.strictEqual(rag.isShlokaRelevant, false);
+    assert.strictEqual(rag.shloka, null);
+  });
+
+  // 4. Response Structure & Conversational Synthesis
+  await test('Response Structure: includes conversationalReply, reflectionPrompt, and Shloka when relevant', async () => {
+    const { response } = await runGuidanceEngine(
+      'I feel overwhelmed by everything happening in my life. What should I do?'
+    );
+    assert.ok(response.title);
+    assert.ok(response.summary);
+    assert.ok(response.conversationalReply);
+    assert.ok(response.conversationalReply.length > 50);
+    assert.strictEqual(response.isShlokaRelevant, true);
+    assert.ok(response.shloka);
+    assert.strictEqual(response.shloka?.id, 'BG2.47');
+    assert.ok(response.reflectionPrompt);
+    assert.ok(Array.isArray(response.steps));
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Conversational Engine: natural conversational reply without shloka for casual greeting', async () => {
+    const { response } = await runGuidanceEngine('Hello');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.ok(response.conversationalReply.toLowerCase().includes('welcome') || response.conversationalReply.toLowerCase().includes('breath'));
+  });
+
+  // 5. Database Operations & Dual-Persistence
+  await test('Database: creates and retrieves a guidance session with RAG shloka payload', async () => {
+    const question = 'Test session: overwhelmed with stress';
+    const { category, response } = await runGuidanceEngine(question);
     const session = await dbClient.createSession(question, category, response);
 
     assert.ok(session.id);
     assert.strictEqual(session.question, question);
     assert.strictEqual(session.category, category);
+    assert.ok(session.response.conversationalReply);
 
     const fetched = await dbClient.getSessionById(session.id);
     assert.ok(fetched);
@@ -112,7 +148,7 @@ async function runTestSuite() {
     await dbClient.deleteSessionById(session.id);
   });
 
-  test('Database: fetches all sessions sorted newest first', async () => {
+  await test('Database: fetches all sessions sorted newest first', async () => {
     const all = await dbClient.getAllSessions();
     assert.ok(Array.isArray(all));
     assert.ok(all.length > 0);
