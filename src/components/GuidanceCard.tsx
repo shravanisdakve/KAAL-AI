@@ -161,14 +161,14 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-gray-900 tracking-tight">
-                      Bhagavad Gita {shloka.chapter}.{shloka.verse}
+                      BHAGAVAD GITA · {shloka.chapter}.{shloka.verse}
                     </span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[#966b24] bg-[#ebd8be] px-2 py-0.5 rounded-full">
                       {shloka.chapterName.split('(')[0].trim()}
                     </span>
                   </div>
                   <span className="text-[11px] text-gray-500 font-normal">
-                    RAG Retrieved Verse • Matched to your emotional dilemma
+                    RAG Retrieved Teaching • Contextual philosophical reflection
                   </span>
                 </div>
               </div>
@@ -195,7 +195,7 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
             </div>
 
             {/* Original Sanskrit Text */}
-            <div className="mb-3 text-center sm:text-left">
+            <div className="mb-2.5 text-center sm:text-left">
               <p className="font-serif text-base sm:text-lg text-stone-900 leading-relaxed font-semibold tracking-wide whitespace-pre-line">
                 {shloka.sanskrit}
               </p>
@@ -208,21 +208,32 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
               </p>
             </div>
 
-            {/* Translation & Real-Life Wisdom */}
-            <div className="p-3.5 bg-white/80 rounded-xl border border-stone-200/70 space-y-2">
+            {/* Literal Translation */}
+            <div className="p-3.5 bg-white/90 rounded-xl border border-stone-200/80 mb-3.5">
               <div className="flex items-start gap-2">
                 <BookOpen size={15} className="text-[#966b24] shrink-0 mt-0.5" />
-                <p className="text-xs sm:text-sm text-stone-800 font-medium leading-relaxed">
-                  "{shloka.translation}"
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs sm:text-sm text-stone-800 font-medium leading-relaxed italic">
+                    "{shloka.translation}"
+                  </p>
+                  {shloka.author && (
+                    <p className="text-[10px] text-stone-400 font-normal">
+                      Translation by {shloka.author}
+                    </p>
+                  )}
+                </div>
               </div>
+            </div>
 
-              <div className="pt-2 border-t border-stone-100 flex items-start gap-2 text-xs text-stone-600 leading-relaxed">
-                <Sparkles size={13} className="text-emerald-700 shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-stone-800">Life Application:</strong> {shloka.meaning}
-                </span>
+            {/* Intellectual Honesty: Why this relates */}
+            <div className="p-3.5 bg-[#fbf9f5] rounded-xl border border-[#e5dcd0] space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#845a1b] uppercase tracking-wider">
+                <Sparkles size={13} className="text-[#966b24]" />
+                <span>Why this relates</span>
               </div>
+              <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
+                {response.whyThisRelates || shloka.meaning}
+              </p>
             </div>
           </div>
         )}

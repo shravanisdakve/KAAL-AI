@@ -686,6 +686,9 @@ export async function runGuidanceEngine(question: string): Promise<{
     frameworkSteps: frameworkStepsToUse,
     shloka: ragResult.isShlokaRelevant ? ragResult.shloka : null,
     isShlokaRelevant: ragResult.isShlokaRelevant,
+    whyThisRelates: ragResult.isShlokaRelevant
+      ? conversational.whyThisRelates || (ragResult.shloka ? ragResult.shloka.meaning : undefined)
+      : undefined,
     detectedEmotion: ragResult.detectedEmotion,
     reflectionPrompt: conversational.reflectionPrompt,
     meta: {
@@ -755,6 +758,9 @@ export function runGuidanceEngineSync(question: string): {
       frameworkSteps: frameworkStepsToUse,
       shloka: ragResult.isShlokaRelevant ? ragResult.shloka : null,
       isShlokaRelevant: ragResult.isShlokaRelevant,
+      whyThisRelates: ragResult.isShlokaRelevant
+        ? conversational.whyThisRelates || (ragResult.shloka ? ragResult.shloka.meaning : undefined)
+        : undefined,
       detectedEmotion: ragResult.detectedEmotion,
       reflectionPrompt: conversational.reflectionPrompt,
       meta: {

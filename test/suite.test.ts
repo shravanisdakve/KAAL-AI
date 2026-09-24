@@ -128,7 +128,7 @@ async function runTestSuite() {
   });
 
   // 4. Response Structure & Conversational Synthesis
-  await test('Response Structure: includes conversationalReply, reflectionPrompt, and Shloka when relevant', async () => {
+  await test('Response Structure: includes conversationalReply, reflectionPrompt, whyThisRelates, and Shloka when relevant', async () => {
     const { response } = await runGuidanceEngine(
       'I feel overwhelmed by everything happening in my life. What should I do?'
     );
@@ -139,8 +139,26 @@ async function runTestSuite() {
     assert.strictEqual(response.isShlokaRelevant, true);
     assert.ok(response.shloka);
     assert.strictEqual(response.shloka?.id, 'BG2.47');
+    assert.ok(response.whyThisRelates);
+    assert.ok(response.whyThisRelates.length > 20);
     assert.ok(response.reflectionPrompt);
     assert.ok(Array.isArray(response.steps));
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Purpose Dilemma: provides intellectually honest response and connection for hard work without purpose', async () => {
+    const { category, response } = await runGuidanceEngine(
+      "I feel like I am working hard but I don't know what my purpose is."
+    );
+    assert.strictEqual(category, 'Purpose');
+    assert.strictEqual(response.isShlokaRelevant, true);
+    assert.strictEqual(response.shloka?.id, 'BG3.35');
+    assert.strictEqual(response.shloka?.chapter, 3);
+    assert.strictEqual(response.shloka?.verse, 35);
+    // Verifies whyThisRelates explicitly frames connection without pretending the Gita invented modern buzzwords
+    assert.ok(response.whyThisRelates);
+    assert.ok(response.whyThisRelates.toLowerCase().includes('path') || response.whyThisRelates.toLowerCase().includes('duty'));
+    assert.ok(response.reflectionPrompt);
     assert.strictEqual(response.steps.length, 3);
   });
 
@@ -148,6 +166,7 @@ async function runTestSuite() {
     const { response } = await runGuidanceEngine('Hello');
     assert.strictEqual(response.isShlokaRelevant, false);
     assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.whyThisRelates, undefined);
     assert.ok(response.conversationalReply.toLowerCase().includes('welcome') || response.conversationalReply.toLowerCase().includes('breath'));
   });
 

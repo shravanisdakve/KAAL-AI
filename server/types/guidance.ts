@@ -40,6 +40,7 @@ export interface StructuredGuidanceResponse {
   frameworkSteps: TacticalStep[];
   shloka?: GitaShloka | null; // Attached ONLY when relevant
   isShlokaRelevant: boolean;
+  whyThisRelates?: string; // Intellectual bridge explaining why the verse connects to user's situation
   detectedEmotion?: string;
   reflectionPrompt?: string;
   meta?: {
