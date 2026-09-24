@@ -93,16 +93,38 @@ async function runTestSuite() {
     assert.ok(rag.shloka?.sanskrit.includes('नियतं कुरु कर्म'));
   });
 
+  await test('RAG Retrieval: accurately fetches BG 2.20 for death & bereavement', () => {
+    const rag = retrieveGitaShlokaRAG(
+      'My grandmother passed away yesterday and I cannot stop crying. The grief is unbearable.'
+    );
+    assert.strictEqual(rag.isShlokaRelevant, true);
+    assert.ok(rag.shloka);
+    assert.strictEqual(rag.shloka?.id, 'BG2.20');
+    assert.ok(rag.shloka?.sanskrit.includes('न जायते म्रियते'));
+  });
+
+  await test('RAG Retrieval: accurately fetches BG 12.13 for relationship conflict & arguments', () => {
+    const rag = retrieveGitaShlokaRAG('I had a terrible fight with my spouse and said things I regret');
+    assert.strictEqual(rag.isShlokaRelevant, true);
+    assert.ok(rag.shloka);
+    assert.strictEqual(rag.shloka?.id, 'BG12.13');
+    assert.ok(rag.shloka?.sanskrit.includes('अद्वेष्टा सर्वभूतानां'));
+  });
+
   await test('RAG Conditional Relevance: does NOT force a shloka for casual greetings', () => {
     const rag = retrieveGitaShlokaRAG('Hello, how are you?');
     assert.strictEqual(rag.isShlokaRelevant, false);
     assert.strictEqual(rag.shloka, null);
   });
 
-  await test('RAG Conditional Relevance: does NOT force a shloka for meta inquiries', () => {
-    const rag = retrieveGitaShlokaRAG('What is your tech stack?');
-    assert.strictEqual(rag.isShlokaRelevant, false);
-    assert.strictEqual(rag.shloka, null);
+  await test('RAG Conditional Relevance: does NOT force a shloka for meta or factual trivia', () => {
+    const rag1 = retrieveGitaShlokaRAG('What is your tech stack?');
+    assert.strictEqual(rag1.isShlokaRelevant, false);
+    assert.strictEqual(rag1.shloka, null);
+
+    const rag2 = retrieveGitaShlokaRAG('What is the capital of France?');
+    assert.strictEqual(rag2.isShlokaRelevant, false);
+    assert.strictEqual(rag2.shloka, null);
   });
 
   // 4. Response Structure & Conversational Synthesis

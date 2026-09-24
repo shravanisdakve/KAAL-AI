@@ -20,6 +20,13 @@ const CASUAL_GREETINGS = new Set([
   'namaste', 'sup', 'yo', 'how are you', 'what are you', 'who are you', 'test', 'help',
 ]);
 
+// Trivia / Out-of-scope triggers that shouldn't force Bhagavad Gita verses
+const TRIVIA_OR_FACTUAL_TRIGGERS = [
+  'capital of', 'weather in', 'president of', 'prime minister', 'population of',
+  'what is 2', 'calculate', 'code in python', 'write a function', 'who invented',
+  'currency of', 'recipe for', 'temperature in', 'who won', 'tech stack',
+];
+
 export interface RAGRetrievalResult {
   shloka: GitaShloka | null;
   isShlokaRelevant: boolean;
@@ -40,122 +47,195 @@ export function tokenizeQuery(text: string): string[] {
 }
 
 /**
- * Analyzes the user's primary emotional state
+ * High-EQ Emotional State Detector
+ * Maps natural human expressions (grief, anger, burnout, loss, paralysis) to psychological categories.
  */
 export function detectEmotionalTone(query: string): string {
   const lower = query.toLowerCase();
 
+  // 1. Grief, Bereavement, Death & Loss
+  if (
+    lower.includes('passed away') ||
+    lower.includes('death') ||
+    lower.includes('died') ||
+    lower.includes('dying') ||
+    lower.includes('funeral') ||
+    lower.includes('grief') ||
+    lower.includes('grieving') ||
+    lower.includes('crying') ||
+    lower.includes('tears') ||
+    lower.includes('lost my') ||
+    lower.includes('miss my') ||
+    lower.includes('unbearable') ||
+    lower.includes('heartbroken')
+  ) {
+    return 'Grief & Bereavement';
+  }
+
+  // 2. Anger, Conflict, Heated Arguments & Regret
+  if (
+    lower.includes('fight') ||
+    lower.includes('fought') ||
+    lower.includes('argument') ||
+    lower.includes('arguing') ||
+    lower.includes('spouse') ||
+    lower.includes('husband') ||
+    lower.includes('wife') ||
+    lower.includes('partner') ||
+    lower.includes('angry') ||
+    lower.includes('rage') ||
+    lower.includes('furious') ||
+    lower.includes('resentful') ||
+    lower.includes('said things i regret') ||
+    lower.includes('hate') ||
+    lower.includes('yelled')
+  ) {
+    return 'Anger & Relationship Conflict';
+  }
+
+  // 3. Overwhelm, Burnout, Stress & Suffocation
   if (
     lower.includes('overwhelm') ||
     lower.includes('stress') ||
     lower.includes('burnout') ||
     lower.includes('pressure') ||
     lower.includes('drowning') ||
-    lower.includes('too much')
+    lower.includes('too much') ||
+    lower.includes('exhausted') ||
+    lower.includes('heavy') ||
+    lower.includes('suffocating')
   ) {
     return 'Overwhelm & Burnout';
   }
 
+  // 4. Procrastination, Laziness & Inertia
   if (
-    lower.includes('sad') ||
-    lower.includes('grief') ||
-    lower.includes('heartbroken') ||
-    lower.includes('crying') ||
-    lower.includes('loss') ||
-    lower.includes('died') ||
-    lower.includes('miss them')
+    lower.includes('procrastinat') ||
+    lower.includes('lazy') ||
+    lower.includes('delay') ||
+    lower.includes('cannot start') ||
+    lower.includes("can't start") ||
+    lower.includes('routine') ||
+    lower.includes('habit') ||
+    lower.includes('sluggish') ||
+    lower.includes('unmotivated') ||
+    lower.includes('inertia')
   ) {
-    return 'Grief & Sorrow';
+    return 'Discipline & Momentum';
   }
 
-  if (
-    lower.includes('fear') ||
-    lower.includes('afraid') ||
-    lower.includes('scared') ||
-    lower.includes('anxious') ||
-    lower.includes('panic') ||
-    lower.includes('fail')
-  ) {
-    return 'Fear of Failure';
-  }
-
+  // 5. Confusion, Life Path & Indecision
   if (
     lower.includes('confused') ||
     lower.includes('path') ||
     lower.includes('direction') ||
     lower.includes('decision') ||
+    lower.includes('decide') ||
+    lower.includes('crossroads') ||
     lower.includes('torn') ||
-    lower.includes('doubt')
+    lower.includes('doubt') ||
+    lower.includes('what should i do')
   ) {
     return 'Confusion & Indecision';
   }
 
+  // 6. Search for Purpose, Svadharma & Existential Emptiness
   if (
     lower.includes('purpose') ||
     lower.includes('meaning') ||
     lower.includes('why work') ||
     lower.includes('unhappy') ||
     lower.includes('empty') ||
-    lower.includes('calling')
+    lower.includes('calling') ||
+    lower.includes('working hard') ||
+    lower.includes('imposter')
   ) {
     return 'Search for Purpose';
   }
 
+  // 7. Fear of Failure & Intimidation
   if (
-    lower.includes('procrastinat') ||
-    lower.includes('lazy') ||
-    lower.includes('delay') ||
-    lower.includes('routine') ||
-    lower.includes('habit') ||
-    lower.includes('focus')
+    lower.includes('fear') ||
+    lower.includes('afraid') ||
+    lower.includes('scared') ||
+    lower.includes('anxious') ||
+    lower.includes('panic') ||
+    lower.includes('fail') ||
+    lower.includes('rejection') ||
+    lower.includes('interview') ||
+    lower.includes('exam')
   ) {
-    return 'Discipline & Momentum';
+    return 'Fear of Failure';
   }
 
+  // 8. Loneliness, Despair & Rock Bottom
   if (
-    lower.includes('angry') ||
-    lower.includes('hate') ||
-    lower.includes('argument') ||
-    lower.includes('fight') ||
-    lower.includes('conflict') ||
-    lower.includes('betrayed')
+    lower.includes('lonely') ||
+    lower.includes('alone') ||
+    lower.includes('rock bottom') ||
+    lower.includes('hopeless') ||
+    lower.includes('giving up') ||
+    lower.includes('surrender') ||
+    lower.includes('no one cares')
   ) {
-    return 'Anger & Conflict';
+    return 'Loneliness & Despair';
   }
 
+  // 9. Inner Stillness, Meditation & Distraction
   if (
     lower.includes('meditat') ||
     lower.includes('stillness') ||
     lower.includes('quiet') ||
     lower.includes('peace') ||
-    lower.includes('breath')
+    lower.includes('breath') ||
+    lower.includes('wandering mind') ||
+    lower.includes('adhd') ||
+    lower.includes('distracted')
   ) {
     return 'Inner Stillness';
   }
 
-  return 'Contemplation';
+  return 'Personal Reflection';
 }
 
 /**
- * Determines whether a query is purely casual or meta (no shloka needed)
+ * Determines whether a query is purely casual, meta, or factual trivia (no shloka needed)
  */
-export function isCasualOrMetaQuery(query: string): boolean {
+export function isCasualOrNonSpiritualQuery(query: string): boolean {
   const trimmed = query.trim().toLowerCase().replace(/[?!.,]/g, '');
+
+  // 1. Casual Greetings
   if (CASUAL_GREETINGS.has(trimmed)) return true;
   if (trimmed.length < 5) return true;
-  if (trimmed.startsWith('who are you') || trimmed.startsWith('what can you do')) return true;
+
+  // 2. Meta assistant questions
+  if (
+    trimmed.startsWith('who are you') ||
+    trimmed.startsWith('what can you do') ||
+    trimmed.startsWith('what is kaal')
+  ) {
+    return true;
+  }
+
+  // 3. Factual trivia / General knowledge questions
+  for (const trigger of TRIVIA_OR_FACTUAL_TRIGGERS) {
+    if (trimmed.includes(trigger)) {
+      return true;
+    }
+  }
+
   return false;
 }
 
 /**
- * Core RAG Retrieval Pipeline for Bhagavad Gita Shlokas
- * Implements semantic score calculation and strict conditional relevance filtering.
+ * Proper RAG Retrieval Pipeline for Bhagavad Gita Shlokas
+ * Uses multi-vector semantic scoring + emotional resonance + conditional relevance gating.
  */
 export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
   const detectedEmotion = detectEmotionalTone(query);
 
-  // 1. Strict Filter: Casual or non-philosophical queries must NOT have shlokas forced upon them.
-  if (isCasualOrMetaQuery(query)) {
+  // 1. Strict Gate: Casual, meta, or factual trivia queries must NOT force a shloka
+  if (isCasualOrNonSpiritualQuery(query)) {
     return {
       shloka: null,
       isShlokaRelevant: false,
@@ -176,16 +256,17 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
     let score = 0;
     const currentMatchedThemes: string[] = [];
 
-    // A. Match against Themes (Weight: 4.0)
+    // A. Phrase & Substring Matches in Themes (Weight: 5.0)
     for (const theme of shloka.themes) {
-      if (normalizedQuery.includes(theme.toLowerCase())) {
-        score += 4.0;
+      const themeLower = theme.toLowerCase();
+      if (normalizedQuery.includes(themeLower)) {
+        score += 5.0;
         currentMatchedThemes.push(theme);
       } else {
-        const themeTokens = theme.toLowerCase().split(/\s+/);
+        const themeTokens = themeLower.split(/\s+/);
         for (const tToken of themeTokens) {
           if (queryTokens.includes(tToken)) {
-            score += 2.0;
+            score += 2.5;
             currentMatchedThemes.push(theme);
             break;
           }
@@ -193,33 +274,51 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
       }
     }
 
-    // B. Match against Emotions (Weight: 3.5)
-    for (const emotion of shloka.emotions) {
-      if (normalizedQuery.includes(emotion.toLowerCase())) {
-        score += 3.5;
-      }
-    }
-
-    // C. Match against Real-life Situations (Weight: 3.0)
+    // B. Situational Match (Weight: 4.5)
     for (const situation of shloka.situations) {
-      if (normalizedQuery.includes(situation.toLowerCase())) {
-        score += 3.0;
+      const sitLower = situation.toLowerCase();
+      if (normalizedQuery.includes(sitLower)) {
+        score += 6.0;
+        currentMatchedThemes.push(situation);
       } else {
-        const sitTokens = situation.toLowerCase().split(/\s+/);
+        const sitTokens = sitLower.split(/\s+/);
         for (const sToken of sitTokens) {
           if (queryTokens.includes(sToken) && !STOP_WORDS.has(sToken)) {
-            score += 1.5;
+            score += 2.0;
             break;
           }
         }
       }
     }
 
-    // D. Match against Translation & Meaning Tokens (Weight: 1.0)
+    // C. Emotional Resonance Affinity (Weight: 4.0)
+    for (const emotion of shloka.emotions) {
+      const emoLower = emotion.toLowerCase();
+      if (normalizedQuery.includes(emoLower)) {
+        score += 4.5;
+      }
+    }
+
+    // D. Emotional Category Resonance Boost
+    // If the shloka's themes directly address the detected emotion
+    if (
+      (detectedEmotion === 'Grief & Bereavement' && (shloka.id === 'BG2.20' || shloka.id === 'BG2.14')) ||
+      (detectedEmotion === 'Anger & Relationship Conflict' && (shloka.id === 'BG2.63' || shloka.id === 'BG12.13' || shloka.id === 'BG17.15')) ||
+      (detectedEmotion === 'Overwhelm & Burnout' && (shloka.id === 'BG2.47' || shloka.id === 'BG2.48' || shloka.id === 'BG2.70')) ||
+      (detectedEmotion === 'Discipline & Momentum' && (shloka.id === 'BG3.8' || shloka.id === 'BG18.37')) ||
+      (detectedEmotion === 'Search for Purpose' && (shloka.id === 'BG3.35')) ||
+      (detectedEmotion === 'Confusion & Indecision' && (shloka.id === 'BG4.40' || shloka.id === 'BG2.47')) ||
+      (detectedEmotion === 'Inner Stillness' && (shloka.id === 'BG6.35' || shloka.id === 'BG6.26' || shloka.id === 'BG6.19')) ||
+      (detectedEmotion === 'Loneliness & Despair' && (shloka.id === 'BG18.66' || shloka.id === 'BG9.22' || shloka.id === 'BG18.58'))
+    ) {
+      score += 4.0;
+    }
+
+    // E. Textual Token Match in Translation & Meaning (Weight: 1.0)
     const combinedContent = `${shloka.translation} ${shloka.meaning}`.toLowerCase();
     for (const token of queryTokens) {
       if (combinedContent.includes(token)) {
-        score += 0.8;
+        score += 1.0;
       }
     }
 
@@ -232,12 +331,11 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
   }
 
   // Normalize score between 0.0 and 1.0
-  const normalizedScore = Math.min(1.0, Math.round((highestScore / 12) * 100) / 100);
+  const normalizedScore = Math.min(1.0, Math.round((highestScore / 14) * 100) / 100);
 
   // RELEVANCE GATE:
-  // Only attach a shloka if the score passes the strict threshold (>= 0.40)
-  // AND there are actual matched dilemma signals.
-  const isShlokaRelevant = normalizedScore >= 0.40 && bestShloka !== null;
+  // Must pass minimum threshold of 0.35 AND have meaningful signal matches
+  const isShlokaRelevant = normalizedScore >= 0.35 && bestShloka !== null;
 
   return {
     shloka: isShlokaRelevant ? bestShloka : null,

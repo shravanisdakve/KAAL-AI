@@ -2,7 +2,7 @@
 
 [![Live Application](https://img.shields.io/badge/Live%20Demo-kaal--ai.onrender.com-10b981?style=for-the-badge&logo=render&logoColor=white)](https://kaal-ai.onrender.com/)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-shravanisdakve%2FKAAL--AI-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
-[![Tests Passing](https://img.shields.io/badge/Tests-15%2F15%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
+[![Tests Passing](https://img.shields.io/badge/Tests-17%2F17%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 > A serene, emotionally intelligent mental wellness companion inspired by the timeless wisdom of the Bhagavad Gita, powered by a **proper RAG (Retrieval-Augmented Generation) retrieval system**, selective shloka relevance gating, natural conversational dialogue, and robust dual-persistence database storage.

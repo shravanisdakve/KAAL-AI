@@ -187,6 +187,114 @@ export function synthesizeEmpatheticFallback(
         ],
       };
 
+    case 'BG2.20': // Grief, Bereavement, Death of Loved Ones
+      return {
+        title: 'The Eternal Soul: Healing from Profound Grief',
+        summary:
+          'The physical form departs, but the soul and love never perish. Allow yourself to grieve with gentle reverence, surrounded by eternal grace.',
+        conversationalReply:
+          `I am holding your words with so much gentleness right now. Losing someone you love shakes the ground beneath your feet, and when tears come, let them flow. Tears are simply love with nowhere to go.\n\n` +
+          `Arjuna stood on the battlefield paralyzed by the unbearable sorrow of losing his beloved mentors and family. In Chapter 2 (Verse 20), Krishna offered him the highest truth of the soul: "The soul is never born, nor does it ever die... It is not destroyed when the physical body passes away."\n\n` +
+          `Your grandmother’s presence has not dissolved into nothingness; her warmth, her blessings, and the love she gave you are forever etched into your consciousness. Do not pressure yourself to "get over it" or be strong today. Simply sit in quiet reverence for the life you shared. You are carrying her memory forward with every breath.`,
+        reflectionPrompt:
+          'What is one loving lesson or warm memory your loved one gave you that you can hold close to your heart today?',
+        steps: [
+          'Allow yourself to cry without trying to suppress or hold back the tears.',
+          'Light a gentle candle or sit in quiet contemplation, dedicating a silent prayer of gratitude to their soul.',
+          'Surround yourself with soft kindness today; eat something warm and rest.',
+        ],
+      };
+
+    case 'BG12.13': // Relationships, Arguments, Saying Things You Regret
+      return {
+        title: 'Mending Relationships with Compassion & Softened Defensiveness',
+        summary:
+          'When arguments wound, ego wants to fight harder. True strength is having the courage to soften, forgive, and speak from love.',
+        conversationalReply:
+          `Arguments with the people we care about leave such a hollow, burning ache in the chest. When tempers flare, we often say sharp words not because we hate the other person, but because our own fear or unmet needs felt threatened.\n\n` +
+          `In Gita 12.13, Krishna reveals what true emotional nobility looks like: "One who is free from malice toward all beings, friendly and compassionate, free from ego, balanced in joy and grief, and forgiving—that soul is dear to Me."\n\n` +
+          `Winning an argument is worthless if you lose the heart of the person in the process. When the dust settles, someone has to be courageous enough to drop the shield of defensiveness first. Let your ego take a back seat. Reach out not to debate who was right, but to reaffirm that their heart matters more to you than winning a debate.`,
+        reflectionPrompt:
+          'What would it look like to tell the other person: "I am sorry for the harsh words I spoke in anger. You matter more to me than being right"?',
+        steps: [
+          'Take a slow breath and let the heat of adrenaline leave your voice before re-initiating contact.',
+          'Acknowledge your own contribution to the conflict without attaching a defensive "but you did X first."',
+          'Offer a gentle, sincere apology for the tone and words spoken in frustration.',
+        ],
+      };
+
+    case 'BG2.63': // Anger & Losing Reason
+      return {
+        title: 'Stepping Back from the Destructive Fire of Anger',
+        summary:
+          'Reacting in anger temporarily blinds discrimination and destroys peace. Step back, breathe, and let wisdom regain the helm.',
+        conversationalReply:
+          `Notice the intense physical sensation of anger right now—how your heartbeat speeds up and the mind races to justify retaliation. Anger feels powerful in the moment, but it is almost always a mask for hurt or fear.\n\n` +
+          `In Gita 2.63, Krishna maps the cognitive psychology of rage with surgical precision: "From anger arises delusion; from delusion comes loss of memory; from loss of memory comes the destruction of reason, and a person is ruined."\n\n` +
+          `Nothing constructive has ever been decided in the peak heat of anger. Do not send that email, do not send that text, and do not make that accusation right now. Step away physically for twenty minutes. Let your nervous system cool down so your highest wisdom, rather than your wounded ego, decides what happens next.`,
+        reflectionPrompt:
+          'What is the vulnerable feeling (hurt, disrespect, fear) hiding underneath your anger right now?',
+        steps: [
+          'Institute an immediate 30-minute silence rule: no calls, messages, or decisions while agitated.',
+          'Drink a full glass of cold water and take 10 slow diaphragmatic breaths.',
+          'Ask yourself: "Will my reaction right now heal the situation or make it more toxic?"',
+        ],
+      };
+
+    case 'BG2.70': // Ocean Stillness Amid Sensory Chaos
+      return {
+        title: 'Deep Ocean Stillness: Untouched by Life’s Incoming Waves',
+        summary:
+          'Be like the ocean that absorbs all rivers without overflowing. Let life’s currents pass through you without shaking your inner depth.',
+        conversationalReply:
+          `When life gets noisy, demanding, and chaotic, it feels like we are being pulled in a dozen directions at once. But remember: external noise only agitates you if you have no anchored depth within.\n\n` +
+          `In Gita 2.70, Krishna gives the majestic metaphor of the ocean: entire rivers of water pour into it day and night, yet the ocean remains vast, still, and contained within its shores. Only the one who absorbs desires and noise without agitation attains lasting peace.\n\n` +
+          `You do not have to fight the chaos around you. Step inward into your own depth. The surface waves may be choppy, but down in your core awareness, there is an unshakeable silence waiting for you.`,
+        reflectionPrompt:
+          'Can you close your eyes for 3 minutes and imagine yourself as the deep ocean floor, untouched by the surface storms?',
+        steps: [
+          'Mute all non-essential notifications for the next 2 hours.',
+          'Step away from social media and sensory inputs that fuel agitation.',
+          'Rest in quiet presence, knowing you are deeper than any temporary storm.',
+        ],
+      };
+
+    case 'BG18.58': // Overcoming Impossible Obstacles
+      return {
+        title: 'Crossing Every Impossible Obstacle through Centered Faith',
+        summary:
+          'When hurdles appear insurmountable, ego feels defeated. Anchor yourself in truth, and by grace you will navigate every trial.',
+        conversationalReply:
+          `I know how heavy this hurdle feels. When you look at the mountain in front of you, the human mind immediately calculates its own limitations and says, "There is no way out of this."\n\n` +
+          `In Gita 18.58, Krishna offers absolute reassurance: "Fix your consciousness upon Me, and by My grace you shall cross over all obstacles and difficulties."\n\n` +
+          `You do not have to solve the entire ten-mile journey right now. You only need the strength for the next footstep. When you stop fighting entirely from personal ego and align yourself with patient, ethical perseverance, unseen doors begin to open. Have faith in your resilience.`,
+        reflectionPrompt:
+          'If you trusted that this obstacle was placed before you to reveal your hidden strength, how would you face it today?',
+        steps: [
+          'Break the impossible problem down into the single simplest action you can execute today.',
+          'Surrender the worry of "how will this end in 6 months" and focus on today’s integrity.',
+          'Remind yourself of at least one previous crisis you survived when you thought you couldn’t.',
+        ],
+      };
+
+    case 'BG9.22': // Solace for Loneliness & Insecurity
+      return {
+        title: 'You Are Not Alone: Universal Grace Holds and Protects You',
+        summary:
+          'When you feel isolated and unprotected, remember you are held by a greater love. Sincere effort is never forgotten.',
+        conversationalReply:
+          `Loneliness is one of the quietest and heaviest aches a human heart can experience. Feeling as if you must fight every battle alone, carry every bill, and endure every hardship without a supportive hand is exhausting.\n\n` +
+          `In Gita 9.22, Krishna makes a tender promise: "To those who love and contemplate with an undivided heart, I supply what they lack and preserve what they have."\n\n` +
+          `You are never truly abandoned. The breath moving in your chest right now is proof that life has not given up on you. Take comfort in the quiet knowledge that your sincere effort, your kindness, and your honesty are watched over by a higher grace. Rest your tired spirit today.`,
+        reflectionPrompt:
+          'Can you gently place your hand on your heart, take a deep breath, and tell yourself: "I am safe in this moment"?',
+        steps: [
+          'Reach out to one trusted person just to say hello, or write your raw thoughts in a private journal.',
+          'Take a slow, grounding walk outdoors and connect with the stillness of nature.',
+          'Release the urge to carry everything alone; ask for help where you can.',
+        ],
+      };
+
     default:
       return {
         title: `${shloka.coreWisdom}`,
