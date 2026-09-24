@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+.guidance_data.json
+bun.lock
+
+
