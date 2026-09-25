@@ -238,6 +238,40 @@ async function runTestSuite() {
     assert.ok(all.length > 0);
   });
 
+  // 6. Dynamic Situational Visual & Multi-Turn Dialogue
+  await test('Situational Visual: generates custom bespoke visual scene on the fly', async () => {
+    const { response } = await runGuidanceEngine('I feel confused about which path I should take in life.');
+    assert.ok(response.situationVisual);
+    assert.strictEqual(response.situationVisual.theme, 'crossroad-dawn');
+    assert.ok(response.situationVisual.prompt.length > 20);
+    assert.ok(response.situationVisual.mood);
+    assert.ok(response.situationVisual.palette.skyTop);
+    assert.ok(response.situationVisual.palette.skyBottom);
+    assert.strictEqual(response.situationVisual.elements.hasPath, true);
+  });
+
+  await test('Multi-Turn Conversation: appends dialogue turns to the same session', async () => {
+    const q1 = 'What should I do about feeling lost?';
+    const { category, response: r1 } = await runGuidanceEngine(q1);
+    const session = await dbClient.createSession(q1, category, r1);
+
+    assert.ok(session.messages);
+    assert.strictEqual(session.messages.length, 1);
+
+    const q2 = 'How do I take the first step without fear?';
+    const { response: r2 } = await runGuidanceEngine(q2, session);
+    const updated = await dbClient.appendMessageToSession(session.id, q2, r2);
+
+    assert.ok(updated);
+    assert.ok(updated?.messages);
+    assert.strictEqual(updated?.messages.length, 2);
+    assert.strictEqual(updated?.messages[0].question, q1);
+    assert.strictEqual(updated?.messages[1].question, q2);
+
+    // Clean up
+    await dbClient.deleteSessionById(session.id);
+  });
+
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);
   if (failed > 0) {
     process.exit(1);

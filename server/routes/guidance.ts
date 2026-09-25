@@ -7,7 +7,7 @@ export const guidanceRouter = Router();
 
 guidanceRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { question } = req.body;
+    const { question, sessionId } = req.body;
 
     // 1. Validate request
     if (question === undefined || question === null) {
@@ -32,13 +32,29 @@ guidanceRouter.post('/', async (req: Request, res: Response, next: NextFunction)
       );
     }
 
-    // 2. Run RAG retrieval and conversational guidance engine
-    const { category, response } = await runGuidanceEngine(trimmedQuestion);
+    // 2. If continuing an existing conversation thread, append turn
+    if (sessionId !== undefined && sessionId !== null) {
+      const numericSessionId = Number(sessionId);
+      if (!isNaN(numericSessionId) && numericSessionId > 0) {
+        const existingSession = await dbClient.getSessionById(numericSessionId);
+        if (existingSession) {
+          const { response } = await runGuidanceEngine(trimmedQuestion, existingSession);
+          const updatedSession = await dbClient.appendMessageToSession(
+            numericSessionId,
+            trimmedQuestion,
+            response
+          );
+          if (updatedSession) {
+            return res.status(200).json(updatedSession);
+          }
+        }
+      }
+    }
 
-    // 3. Save to database (PostgreSQL / resilient persistent store)
+    // 3. Otherwise start a new conversation session
+    const { category, response } = await runGuidanceEngine(trimmedQuestion);
     const savedSession = await dbClient.createSession(trimmedQuestion, category, response);
 
-    // 4. Return complete saved session
     return res.status(201).json(savedSession);
   } catch (err) {
     return next(err);

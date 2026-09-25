@@ -44,6 +44,38 @@ export interface TacticalStep {
   checklist: string[];
 }
 
+export interface SituationVisual {
+  id: string;
+  theme: string;
+  title: string;
+  mood: string;
+  prompt: string;
+  seed: number;
+  palette: {
+    skyTop: string;
+    skyBottom: string;
+    mountainFar: string;
+    mountainNear: string;
+    ground: string;
+    accentGlow: string;
+    sunGlow: string;
+    waterReflection?: string;
+  };
+  elements: {
+    sunPosition: 'center' | 'left' | 'right' | 'rising' | 'dusk';
+    hasSunRays: boolean;
+    hasMountains: boolean;
+    hasWater: boolean;
+    hasPath: boolean;
+    hasMist: boolean;
+    hasStars: boolean;
+    hasLanterns: boolean;
+    hasLotus: boolean;
+    hasStones: boolean;
+  };
+  altText: string;
+}
+
 export interface StructuredGuidanceResponse {
   title: string;
   summary: string;
@@ -55,6 +87,7 @@ export interface StructuredGuidanceResponse {
   whyThisRelates?: string; // Intellectual bridge explaining why the verse connects to user's situation
   detectedEmotion?: string;
   reflectionPrompt?: string;
+  situationVisual?: SituationVisual; // Bespoke situational visual generated on the fly
   meta?: {
     category: GuidanceCategory;
     pattern: string;
@@ -73,16 +106,26 @@ export interface StructuredGuidanceResponse {
   };
 }
 
+export interface GuidanceExchange {
+  id: string;
+  question: string;
+  response: StructuredGuidanceResponse;
+  createdAt: string;
+}
+
 export interface GuidanceSession {
   id: number;
   question: string;
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;
+  messages?: GuidanceExchange[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface GuidanceRequest {
   question: string;
+  sessionId?: number;
 }
 
 export interface ApiErrorResponse {

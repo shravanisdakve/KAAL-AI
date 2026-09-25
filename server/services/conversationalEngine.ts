@@ -6,6 +6,7 @@ interface ConversationalSynthesisInput {
   detectedEmotion: string;
   shloka: GitaShloka | null;
   isShlokaRelevant: boolean;
+  conversationHistory?: { question: string; reply: string; shloka?: string }[];
 }
 
 interface ConversationalSynthesisOutput {
@@ -404,9 +405,22 @@ Return your response in strict valid JSON format:
   "steps": ["Step 1", "Step 2", "Step 3"]
 }`;
 
+    const historyContext =
+      input.conversationHistory && input.conversationHistory.length > 0
+        ? `\n\nPREVIOUS CONVERSATION CONTEXT (Continue this ongoing dialogue naturally like Krishna guiding Arjuna, directly building on what was explored earlier):\n` +
+          input.conversationHistory
+            .map(
+              (h, idx) =>
+                `Turn ${idx + 1}:\nUser: "${h.question}"\nGuide: "${h.reply}"${
+                  h.shloka ? ` (Referred to: ${h.shloka})` : ''
+                }`
+            )
+            .join('\n\n')
+        : '';
+
     const prompt = `User's Question: "${input.question}"
 Detected Emotion: ${input.detectedEmotion}
-Is Shloka Relevant: ${input.isShlokaRelevant ? 'YES' : 'NO'}`;
+Is Shloka Relevant: ${input.isShlokaRelevant ? 'YES' : 'NO'}${historyContext}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

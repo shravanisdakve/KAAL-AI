@@ -1,5 +1,6 @@
 import {
   GuidanceCategory,
+  GuidanceSession,
   StructuredGuidanceResponse,
   TacticalStep,
 } from '../types/guidance.ts';
@@ -8,6 +9,7 @@ import {
   generateConversationalGuidance,
   synthesizeEmpatheticFallback,
 } from './conversationalEngine.ts';
+import { generateSituationVisual } from './visualGenerator.ts';
 
 interface KeywordRule {
   term: string;
@@ -638,7 +640,10 @@ export function selectPattern(
  * Primary Guidance Engine entry point with RAG Shloka Retrieval & Conversational Synthesis.
  * Incorporates Bhagavad Gita RAG retrieval with conditional relevance filtering and high-EQ conversational dialogue.
  */
-export async function runGuidanceEngine(question: string): Promise<{
+export async function runGuidanceEngine(
+  question: string,
+  existingSession?: GuidanceSession
+): Promise<{
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;
 }> {
@@ -656,12 +661,31 @@ export async function runGuidanceEngine(question: string): Promise<{
   // 1. Run Bhagavad Gita RAG Retrieval Pipeline
   const ragResult = retrieveGitaShlokaRAG(question);
 
-  // 2. Synthesize Human-Like Conversational Guidance
+  // Extract previous conversation turns if continuing a dialogue
+  const conversationHistory =
+    existingSession?.messages && existingSession.messages.length > 0
+      ? existingSession.messages.map((m) => ({
+          question: m.question,
+          reply: m.response.conversationalReply,
+          shloka: m.response.shloka?.id,
+        }))
+      : existingSession
+      ? [
+          {
+            question: existingSession.question,
+            reply: existingSession.response.conversationalReply,
+            shloka: existingSession.response.shloka?.id,
+          },
+        ]
+      : undefined;
+
+  // 2. Synthesize Human-Like Conversational Guidance with conversation history
   const conversational = await generateConversationalGuidance({
     question,
     detectedEmotion: ragResult.detectedEmotion,
     shloka: ragResult.shloka,
     isShlokaRelevant: ragResult.isShlokaRelevant,
+    conversationHistory,
   });
 
   // 3. Fallback Pattern Selection (for tactical steps compatibility)
@@ -678,6 +702,15 @@ export async function runGuidanceEngine(question: string): Promise<{
     title: stepsToUse[idx] || step.title,
   }));
 
+  // 4. Generate bespoke situation visual on the fly for this exact question and emotional state
+  const situationVisual = generateSituationVisual({
+    question,
+    category: resolvedCategory,
+    detectedEmotion: ragResult.detectedEmotion,
+    shloka: ragResult.shloka,
+    isShlokaRelevant: ragResult.isShlokaRelevant,
+  });
+
   const structuredResponse: StructuredGuidanceResponse = {
     title: conversational.title || generated.title,
     summary: conversational.summary || generated.summary,
@@ -691,6 +724,7 @@ export async function runGuidanceEngine(question: string): Promise<{
       : undefined,
     detectedEmotion: ragResult.detectedEmotion,
     reflectionPrompt: conversational.reflectionPrompt,
+    situationVisual,
     meta: {
       category: resolvedCategory,
       pattern:
@@ -755,6 +789,14 @@ export function runGuidanceEngineSync(question: string): {
     title: stepsToUse[idx] || step.title,
   }));
 
+  const situationVisual = generateSituationVisual({
+    question,
+    category: resolvedCategory,
+    detectedEmotion: ragResult.detectedEmotion,
+    shloka: ragResult.shloka,
+    isShlokaRelevant: ragResult.isShlokaRelevant,
+  });
+
   return {
     category: resolvedCategory,
     response: {
@@ -770,6 +812,7 @@ export function runGuidanceEngineSync(question: string): {
         : undefined,
       detectedEmotion: ragResult.detectedEmotion,
       reflectionPrompt: conversational.reflectionPrompt,
+      situationVisual,
       meta: {
         category: resolvedCategory,
         pattern:

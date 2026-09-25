@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   GuidanceCategory,
+  GuidanceExchange,
   GuidanceSession,
   StructuredGuidanceResponse,
 } from '../types/guidance.ts';
@@ -176,20 +177,34 @@ class DatabaseManager {
   ): Promise<GuidanceSession> {
     await this.init();
 
+    const initialExchange: GuidanceExchange = {
+      id: `msg-${Date.now()}-1`,
+      question,
+      response,
+      createdAt: new Date().toISOString(),
+    };
+
+    const payload = {
+      ...response,
+      messages: [initialExchange],
+    };
+
     if (this.isPostgresAvailable && this.pool) {
       try {
         const res = await this.pool.query(
           `INSERT INTO guidance_sessions (question, category, response, created_at)
            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
            RETURNING id, question, category, response, created_at`,
-          [question, category, JSON.stringify(response)]
+          [question, category, JSON.stringify(payload)]
         );
         const row = res.rows[0];
+        const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
         return {
           id: row.id,
           question: row.question,
           category: row.category as GuidanceCategory,
-          response: typeof row.response === 'string' ? JSON.parse(row.response) : row.response,
+          response: parsed,
+          messages: parsed.messages || [initialExchange],
           createdAt: new Date(row.created_at).toISOString(),
         };
       } catch (err) {
@@ -203,12 +218,81 @@ class DatabaseManager {
       question,
       category,
       response,
+      messages: [initialExchange],
       createdAt: new Date().toISOString(),
     };
 
     this.localStore.unshift(newSession);
     this.persistLocalStore();
     return newSession;
+  }
+
+  public async appendMessageToSession(
+    id: number,
+    question: string,
+    response: StructuredGuidanceResponse
+  ): Promise<GuidanceSession | null> {
+    await this.init();
+
+    const newExchange: GuidanceExchange = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      question,
+      response,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (this.isPostgresAvailable && this.pool) {
+      try {
+        const existing = await this.getSessionById(id);
+        if (existing) {
+          const messages = existing.messages || [
+            {
+              id: `msg-${existing.id}-1`,
+              question: existing.question,
+              response: existing.response,
+              createdAt: existing.createdAt,
+            },
+          ];
+          messages.push(newExchange);
+          const payload = { ...response, messages };
+
+          await this.pool.query(
+            `UPDATE guidance_sessions SET response = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [JSON.stringify(payload), id]
+          );
+
+          return {
+            ...existing,
+            response,
+            messages,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      } catch (err) {
+        console.error('PostgreSQL appendMessage error, falling back to local store:', err);
+      }
+    }
+
+    const session = this.localStore.find((s) => s.id === id);
+    if (session) {
+      if (!session.messages) {
+        session.messages = [
+          {
+            id: `msg-${session.id}-1`,
+            question: session.question,
+            response: session.response,
+            createdAt: session.createdAt,
+          },
+        ];
+      }
+      session.messages.push(newExchange);
+      session.response = response;
+      session.updatedAt = new Date().toISOString();
+      this.persistLocalStore();
+      return session;
+    }
+
+    return null;
   }
 
   public async getAllSessions(): Promise<GuidanceSession[]> {
@@ -219,21 +303,48 @@ class DatabaseManager {
         const res = await this.pool.query(
           'SELECT id, question, category, response, created_at FROM guidance_sessions ORDER BY created_at DESC'
         );
-        return res.rows.map((row) => ({
-          id: row.id,
-          question: row.question,
-          category: row.category as GuidanceCategory,
-          response: typeof row.response === 'string' ? JSON.parse(row.response) : row.response,
-          createdAt: new Date(row.created_at).toISOString(),
-        }));
+        return res.rows.map((row) => {
+          const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
+          const messages =
+            parsed && Array.isArray(parsed.messages)
+              ? parsed.messages
+              : [
+                  {
+                    id: `msg-${row.id}-1`,
+                    question: row.question,
+                    response: parsed,
+                    createdAt: new Date(row.created_at).toISOString(),
+                  },
+                ];
+          return {
+            id: row.id,
+            question: row.question,
+            category: row.category as GuidanceCategory,
+            response: parsed,
+            messages,
+            createdAt: new Date(row.created_at).toISOString(),
+          };
+        });
       } catch (err) {
         console.error('PostgreSQL select error, using local store:', err);
       }
     }
 
-    return [...this.localStore].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return [...this.localStore]
+      .map((item) => {
+        if (!item.messages || item.messages.length === 0) {
+          item.messages = [
+            {
+              id: `msg-${item.id}-1`,
+              question: item.question,
+              response: item.response,
+              createdAt: item.createdAt,
+            },
+          ];
+        }
+        return item;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   public async getSessionById(id: number): Promise<GuidanceSession | null> {
@@ -247,11 +358,24 @@ class DatabaseManager {
         );
         if (res.rows.length === 0) return null;
         const row = res.rows[0];
+        const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
+        const messages =
+          parsed && Array.isArray(parsed.messages)
+            ? parsed.messages
+            : [
+                {
+                  id: `msg-${row.id}-1`,
+                  question: row.question,
+                  response: parsed,
+                  createdAt: new Date(row.created_at).toISOString(),
+                },
+              ];
         return {
           id: row.id,
           question: row.question,
           category: row.category as GuidanceCategory,
-          response: typeof row.response === 'string' ? JSON.parse(row.response) : row.response,
+          response: parsed,
+          messages,
           createdAt: new Date(row.created_at).toISOString(),
         };
       } catch (err) {
@@ -260,7 +384,20 @@ class DatabaseManager {
     }
 
     const found = this.localStore.find((item) => item.id === id);
-    return found || null;
+    if (found) {
+      if (!found.messages || found.messages.length === 0) {
+        found.messages = [
+          {
+            id: `msg-${found.id}-1`,
+            question: found.question,
+            response: found.response,
+            createdAt: found.createdAt,
+          },
+        ];
+      }
+      return found;
+    }
+    return null;
   }
 
   public async deleteSessionById(id: number): Promise<boolean> {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BookOpen, Copy, Check, Sparkles } from 'lucide-react';
 import { StructuredGuidanceResponse } from '../types/guidance.ts';
 import { KaalAvatar } from './KaalAvatar.tsx';
+import { SituationalVisual } from './SituationalVisual.tsx';
 
 interface GuidanceCardProps {
   response: StructuredGuidanceResponse;
@@ -9,55 +10,14 @@ interface GuidanceCardProps {
   timestamp?: string;
 }
 
-// Category-tailored situational images reflecting each mindset / emotion
-const SITUATION_IMAGES: Record<string, { src: string; alt: string }> = {
-  Clarity: {
-    src: '/situations/clarity.jpg',
-    alt: 'Misty mountain trail at sunrise with sunlight breaking through, representing clarity of path',
-  },
-  Stress: {
-    src: '/situations/stress.jpg',
-    alt: 'Calm emerald lake reflecting misty pine forests, bringing soothing stillness to relieve stress',
-  },
-  Purpose: {
-    src: '/situations/purpose.jpg',
-    alt: 'Vast golden horizon from a high mountain summit, inspiring deep purpose and direction',
-  },
-  Relationships: {
-    src: '/situations/relationships.jpg',
-    alt: 'Two people peacefully conversing on a bench beside a serene lake at golden hour',
-  },
-  'Fear & Uncertainty': {
-    src: '/situations/clarity.jpg',
-    alt: 'Opening sunrise through misty path, turning uncertainty into open horizon',
-  },
-  Discipline: {
-    src: '/situations/discipline.jpg',
-    alt: 'Ascending stone staircase along alpine ridge, signifying steady devotion and daily discipline',
-  },
-  Meditation: {
-    src: '/situations/meditation.jpg',
-    alt: 'Zen balance stones on still reflective water during tranquil dusk, representing meditation',
-  },
-  'General Reflection': {
-    src: '/situations/general.jpg',
-    alt: 'Soft gentle waves on a golden beach at dawn, evoking peaceful timeless reflection',
-  },
-};
-
 export const GuidanceCard: React.FC<GuidanceCardProps> = ({
   response,
   category = 'General Reflection',
   timestamp = '10:43 AM',
 }) => {
-  const [imageError, setImageError] = useState(false);
   const [copiedShloka, setCopiedShloka] = useState(false);
 
   const activeCategory = response.meta?.category || category || 'General Reflection';
-
-  const situationImage =
-    SITUATION_IMAGES[activeCategory] ||
-    SITUATION_IMAGES['General Reflection'];
 
   // Conversational text paragraphs
   const conversationalText =
@@ -135,18 +95,12 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
             </div>
           </div>
 
-          {/* Subtle Visual Element — Dynamic Situational Landscape */}
-          {!imageError && (
-            <div className="w-full md:w-48 h-32 md:h-36 shrink-0 rounded-xl overflow-hidden shadow-2xs border border-stone-200/70 bg-stone-50 select-none">
-              <img
-                src={situationImage.src}
-                alt={situationImage.alt}
-                loading="lazy"
-                onError={() => setImageError(true)}
-                className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity duration-300"
-              />
-            </div>
-          )}
+          {/* Subtle Visual Element — Dynamic Situational Landscape Generated On the Fly */}
+          <SituationalVisual
+            visual={response.situationVisual}
+            category={activeCategory}
+            question={response.title}
+          />
         </div>
 
         {/* Section 2: AUTHENTIC BHAGAVAD GITA SHLOKA CARD (ONLY IF RAG RETRIEVED & RELEVANT) */}

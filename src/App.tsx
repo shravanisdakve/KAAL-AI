@@ -171,9 +171,10 @@ export default function App() {
     scrollToBottom();
 
     try {
-      const newSession = await askGuidance(question);
-      setActiveSession(newSession);
-      setActiveSessionId(newSession.id);
+      // Pass activeSessionId if continuing an existing chat thread
+      const updatedSession = await askGuidance(question, activeSessionId);
+      setActiveSession(updatedSession);
+      setActiveSessionId(updatedSession.id);
       setPendingQuestion(null);
 
       // Refresh history list so sidebar updates
@@ -244,17 +245,33 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 scroll-smooth">
           <div className="max-w-4xl mx-auto">
             {activeSession ? (
-              <>
-                <UserMessage
-                  question={activeSession.question}
-                  timestamp={formatTime(activeSession.createdAt)}
-                />
-                <GuidanceCard
-                  response={activeSession.response}
-                  category={activeSession.category}
-                  timestamp={formatTime(activeSession.createdAt)}
-                />
-              </>
+              activeSession.messages && activeSession.messages.length > 0 ? (
+                activeSession.messages.map((exchange, idx) => (
+                  <div key={exchange.id || idx} className="space-y-6 mb-8">
+                    <UserMessage
+                      question={exchange.question}
+                      timestamp={formatTime(exchange.createdAt)}
+                    />
+                    <GuidanceCard
+                      response={exchange.response}
+                      category={exchange.response.meta?.category || activeSession.category}
+                      timestamp={formatTime(exchange.createdAt)}
+                    />
+                  </div>
+                ))
+              ) : (
+                <>
+                  <UserMessage
+                    question={activeSession.question}
+                    timestamp={formatTime(activeSession.createdAt)}
+                  />
+                  <GuidanceCard
+                    response={activeSession.response}
+                    category={activeSession.category}
+                    timestamp={formatTime(activeSession.createdAt)}
+                  />
+                </>
+              )
             ) : (
               !isLoading && (
                 <EmptyState onSelectPrompt={(prompt) => handleSubmitQuestion(prompt)} />

@@ -1,6 +1,9 @@
 import { ApiError, GuidanceSession } from '../types/guidance.ts';
 
-export async function askGuidance(question: string): Promise<GuidanceSession> {
+export async function askGuidance(
+  question: string,
+  sessionId?: number | null
+): Promise<GuidanceSession> {
   const trimmed = question.trim();
   if (!trimmed) {
     throw {
@@ -16,7 +19,10 @@ export async function askGuidance(question: string): Promise<GuidanceSession> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ question: trimmed }),
+      body: JSON.stringify({
+        question: trimmed,
+        ...(sessionId ? { sessionId } : {}),
+      }),
     });
 
     const data = await res.json();
