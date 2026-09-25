@@ -131,8 +131,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
+  // Close mobile drawer on Escape key
+  React.useEffect(() => {
+    if (!isMobile || !isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseMobile();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile, isOpen, onCloseMobile]);
+
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#fbfcfb] border-r border-gray-200/80 w-72 select-none">
+    <div className="flex flex-col h-full bg-[#fbfcfb] border-r border-gray-200/80 w-full select-none">
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <button
@@ -160,10 +172,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+            className="p-2 -mr-1 text-gray-500 hover:text-gray-900 active:bg-gray-100 rounded-lg transition cursor-pointer touch-manipulation flex items-center justify-center"
             aria-label="Close menu"
           >
-            <X size={18} />
+            <X size={19} />
           </button>
         ) : (
           <button
@@ -252,12 +264,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Mobile Drawer */}
       {isMobile && isOpen && (
-        <div className="fixed inset-0 z-40 flex">
+        <div
+          className="fixed inset-0 z-50 flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="History navigation drawer"
+        >
+          {/* Backdrop overlay */}
           <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-200"
             onClick={onCloseMobile}
+            aria-hidden="true"
           />
-          <div className="relative z-10 h-full w-72 max-w-[85vw] shadow-xl">
+          {/* Drawer panel */}
+          <div className="relative z-10 h-full w-72 max-w-[85vw] shadow-2xl bg-[#fbfcfb] flex flex-col">
             {sidebarContent}
           </div>
         </div>
@@ -292,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Desktop Expanded Sidebar */}
       {!isMobile && isOpen && (
-        <div className="h-full shrink-0 select-none transition-all">
+        <div className="h-full w-72 shrink-0 select-none transition-all">
           {sidebarContent}
         </div>
       )}

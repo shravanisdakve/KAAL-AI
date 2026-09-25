@@ -19,11 +19,13 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
       <div className="flex items-center gap-3">
         {isMobile && (
           <button
+            type="button"
             onClick={onToggleSidebar}
-            className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-            aria-label="Toggle navigation drawer"
+            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 rounded-lg transition cursor-pointer touch-manipulation flex items-center justify-center"
+            aria-label="Open conversation history menu"
+            title="Open conversation history"
           >
-            <Menu size={19} />
+            <Menu size={20} />
           </button>
         )}
 

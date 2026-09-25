@@ -28,9 +28,13 @@ export default function App() {
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
 
   // Sidebar responsive & collapse states
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
+  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+  });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   // Shortcuts modal
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -92,6 +96,7 @@ export default function App() {
   const handleSelectSession = async (id: number) => {
     setCurrentError(null);
     setActiveSessionId(id);
+    setIsMobileSidebarOpen(false);
 
     try {
       const session = await fetchHistoryById(id);
@@ -114,6 +119,7 @@ export default function App() {
     setActiveSessionId(null);
     setCurrentError(null);
     setPendingQuestion(null);
+    setIsMobileSidebarOpen(false);
   };
 
   // Delete a single conversation from history
@@ -213,8 +219,14 @@ export default function App() {
         onNewConversation={handleNewConversation}
         onDeleteSession={handleDeleteSession}
         onClearAllHistory={handleClearAllHistory}
-        isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen((prev) => !prev)}
+        isOpen={isMobile ? isMobileSidebarOpen : isSidebarOpen}
+        onToggle={() => {
+          if (isMobile) {
+            setIsMobileSidebarOpen((prev) => !prev);
+          } else {
+            setIsSidebarOpen((prev) => !prev);
+          }
+        }}
         isMobile={isMobile}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
@@ -223,7 +235,7 @@ export default function App() {
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#fafbfa] relative">
         {/* Top Assistant Header */}
         <AssistantHeader
-          onToggleSidebar={() => setIsMobileSidebarOpen(true)}
+          onToggleSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           onReset={handleNewConversation}
           isMobile={isMobile}
         />
