@@ -168,7 +168,7 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
                     </span>
                   </div>
                   <span className="text-[11px] text-gray-500 font-normal">
-                    RAG Retrieved Teaching • Contextual philosophical reflection
+                    A reflection from the Bhagavad Gita
                   </span>
                 </div>
               </div>

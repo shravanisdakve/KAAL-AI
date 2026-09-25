@@ -138,7 +138,33 @@ export function synthesizeEmpatheticFallback(
         ],
       };
 
-    case 'BG3.35': // Svadharma & Purpose (Addressed with rigorous intellectual honesty)
+    case 'BG3.35': // Svadharma, Life Path & Purpose (Addressed with rigorous intellectual honesty)
+      const isPathChoice =
+        question.toLowerCase().includes('which path') ||
+        question.toLowerCase().includes('path i should take') ||
+        question.toLowerCase().includes('direction in life') ||
+        question.toLowerCase().includes('confused about which path');
+
+      if (isPathChoice) {
+        return {
+          title: 'Finding your path without demanding immediate certainty',
+          summary:
+            'Clarity comes less from finding one perfect answer and more from understanding what genuinely matters to you and what kind of life you want to build.',
+          conversationalReply:
+            `Feeling confused about which direction to take doesn't necessarily mean you're on the wrong path.\n\n` +
+            `Sometimes clarity comes less from finding one perfect answer and more from understanding what genuinely matters to you, what responsibilities are yours, and what kind of life you want to build. You do not need to demand instant certainty from yourself before taking the next thoughtful step.`,
+          whyThisRelates:
+            'This teaching relates to your question because it speaks to the importance of understanding and following one’s own path rather than simply adopting another person’s direction. For your situation, you might use it as an invitation to examine what is genuinely yours before making a decision.',
+          reflectionPrompt:
+            'If I stopped comparing my path with everyone else\'s, what direction would I feel more drawn toward?',
+          steps: [
+            'Write down the 2–3 paths you are currently considering.',
+            'For each one, note what attracts you and what you are afraid of.',
+            'Identify one small action that helps you learn more about each path.',
+          ],
+        };
+      }
+
       return {
         title: 'Finding purpose without comparing your path',
         summary:

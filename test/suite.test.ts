@@ -73,6 +73,34 @@ async function runTestSuite() {
   });
 
   // 3. RAG Retrieval Pipeline & Conditional Shloka Matching
+  await test('NLP Understanding Layer: accurately extracts intent, emotions, topics, and needs', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const nlp = extractNlpUnderstanding('I feel confused about which path I should take in life.');
+    assert.strictEqual(nlp.intent, 'life_direction');
+    assert.ok(nlp.emotions.includes('confusion'));
+    assert.ok(nlp.topics.includes('personal_path'));
+    assert.ok(nlp.needs.includes('clarity'));
+  });
+
+  await test('Life Path Dilemma: retrieves BG 3.35 (Svadharma) and rejects BG 4.40 for life path confusion', () => {
+    const rag = retrieveGitaShlokaRAG('I feel confused about which path I should take in life.');
+    assert.strictEqual(rag.isShlokaRelevant, true);
+    assert.ok(rag.shloka);
+    assert.strictEqual(rag.shloka?.id, 'BG3.35'); // Validates correct Svadharma verse
+    assert.notStrictEqual(rag.shloka?.id, 'BG4.40'); // Strictly confirms 4.40 is NOT selected
+    assert.ok(rag.finalScore >= 0.72);
+    assert.strictEqual(rag.retrievalMethod, 'hybrid');
+    assert.ok(rag.candidateRankings.length > 0);
+  });
+
+  await test('RAG Relevance Threshold: does NOT force a shloka for mundane household complaints (roommate dirty dishes)', () => {
+    const rag = retrieveGitaShlokaRAG(
+      'My roommate keeps leaving dirty dishes in the sink and it is driving me crazy.'
+    );
+    assert.strictEqual(rag.isShlokaRelevant, false);
+    assert.strictEqual(rag.shloka, null);
+  });
+
   await test('RAG Retrieval: accurately fetches BG 2.47 for overwhelm & anxiety of results', () => {
     const rag = retrieveGitaShlokaRAG(
       'I feel overwhelmed by everything happening in my life. What should I do?'
@@ -144,6 +172,22 @@ async function runTestSuite() {
     assert.ok(response.reflectionPrompt);
     assert.ok(Array.isArray(response.steps));
     assert.strictEqual(response.steps.length, 3);
+    assert.strictEqual(response.meta?.retrievalMethod, 'hybrid');
+    assert.ok(response.meta?.finalScore !== undefined);
+  });
+
+  await test('Life Path Response: delivers reviewer-specified compassionate guidance for "which path to take in life"', async () => {
+    const { category, response } = await runGuidanceEngine(
+      'I feel confused about which path I should take in life.'
+    );
+    assert.strictEqual(category, 'Clarity');
+    assert.strictEqual(response.isShlokaRelevant, true);
+    assert.strictEqual(response.shloka?.id, 'BG3.35');
+    assert.strictEqual(response.title, 'Finding your path without demanding immediate certainty');
+    assert.ok(response.conversationalReply.includes("doesn't necessarily mean you're on the wrong path"));
+    assert.ok(response.whyThisRelates?.includes("following one’s own path") || response.whyThisRelates?.includes("following one's own path"));
+    assert.ok(response.reflectionPrompt?.includes("If I stopped comparing my path with everyone else's"));
+    assert.strictEqual(response.steps.length, 3);
   });
 
   await test('Purpose Dilemma: provides intellectually honest response and connection for hard work without purpose', async () => {
@@ -155,7 +199,6 @@ async function runTestSuite() {
     assert.strictEqual(response.shloka?.id, 'BG3.35');
     assert.strictEqual(response.shloka?.chapter, 3);
     assert.strictEqual(response.shloka?.verse, 35);
-    // Verifies whyThisRelates explicitly frames connection without pretending the Gita invented modern buzzwords
     assert.ok(response.whyThisRelates);
     assert.ok(response.whyThisRelates.toLowerCase().includes('path') || response.whyThisRelates.toLowerCase().includes('duty'));
     assert.ok(response.reflectionPrompt);

@@ -22,6 +22,18 @@ export interface GitaShloka {
   themes: string[];
   emotions: string[];
   situations: string[];
+  concepts?: string[];
+  contexts?: string[];
+  emotional_relevance?: string[];
+  modern_application?: string[];
+  caution?: string[];
+}
+
+export interface NlpUnderstanding {
+  emotions: string[];
+  intent: string;
+  topics: string[];
+  needs: string[];
 }
 
 export interface TacticalStep {
@@ -51,6 +63,13 @@ export interface StructuredGuidanceResponse {
     relevanceScore?: number;
     retrievalEngine?: string;
     engine: string;
+    retrievalMethod?: 'hybrid' | 'semantic' | 'lexical';
+    semanticScore?: number;
+    keywordScore?: number;
+    contextScore?: number;
+    finalScore?: number;
+    nlpAnalysis?: NlpUnderstanding;
+    candidateRankings?: { id: string; finalScore: number }[];
   };
 }
 

@@ -1,5 +1,5 @@
 import { BHAGAVAD_GITA_CORPUS } from '../data/gitaDataset.ts';
-import { GitaShloka } from '../types/guidance.ts';
+import { GitaShloka, NlpUnderstanding } from '../types/guidance.ts';
 
 const STOP_WORDS = new Set([
   'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are',
@@ -20,11 +20,12 @@ const CASUAL_GREETINGS = new Set([
   'namaste', 'sup', 'yo', 'how are you', 'what are you', 'who are you', 'test', 'help',
 ]);
 
-// Trivia / Out-of-scope triggers that shouldn't force Bhagavad Gita verses
-const TRIVIA_OR_FACTUAL_TRIGGERS = [
+// Non-philosophical triggers (household chores, factual trivia, code requests)
+const OUT_OF_SCOPE_TRIGGERS = [
   'capital of', 'weather in', 'president of', 'prime minister', 'population of',
   'what is 2', 'calculate', 'code in python', 'write a function', 'who invented',
   'currency of', 'recipe for', 'temperature in', 'who won', 'tech stack',
+  'dirty dishes', 'dishes in the sink', 'roommate keeps', 'trash out', 'clean the kitchen',
 ];
 
 export interface RAGRetrievalResult {
@@ -33,6 +34,13 @@ export interface RAGRetrievalResult {
   detectedEmotion: string;
   relevanceScore: number;
   matchedThemes: string[];
+  nlpUnderstanding: NlpUnderstanding;
+  retrievalMethod: 'hybrid';
+  semanticScore: number;
+  keywordScore: number;
+  contextScore: number;
+  finalScore: number;
+  candidateRankings: { id: string; finalScore: number }[];
 }
 
 /**
@@ -46,156 +54,367 @@ export function tokenizeQuery(text: string): string[] {
     .filter((w) => w.length > 1 && !STOP_WORDS.has(w));
 }
 
+// 24 Canonical Semantic Dimensions for Dense Vector Representation
+export const SEMANTIC_DIMENSIONS = [
+  'svadharma_authentic_path',      // 0: choosing one's own path, duty, non-imitation
+  'life_direction_clarity',        // 1: vocational direction, decision crossroads
+  'purpose_meaning',               // 2: existential purpose, why work
+  'comparison_envy',               // 3: comparing with others, feeling behind
+  'action_effort_agency',          // 4: focus on immediate action and duty
+  'outcome_detachment',            // 5: releasing attachment to fruits/results
+  'anxiety_overwhelm_burnout',      // 6: cognitive overload, stress, drowning
+  'equanimity_balance_samatvam',   // 7: inner poise across triumph and defeat
+  'impermanence_transience',       // 8: seasonal nature of pain and pleasure
+  'grief_bereavement_mourning',    // 9: death of loved ones, sorrow
+  'eternal_soul_immortality',      // 10: indestructible conscious essence
+  'anger_rage_loss_of_reason',     // 11: cognitive blindness of anger
+  'relationship_harmony_forgiving',// 12: friendliness, maitri, dropping defensiveness
+  'truthful_gentle_speech',        // 13: communication without malice
+  'discipline_momentum',           // 14: micro-stepping, breaking inertia
+  'procrastination_delay',         // 15: delay, waiting for mood
+  'meditation_stillness',          // 16: abhyasa, steady mindfulness
+  'restless_wandering_mind',       // 17: racing thoughts, distraction
+  'deep_ocean_peace',              // 18: unshakeable depth amidst noise
+  'courage_duty_abhaya',           // 19: fearlessness in the face of defeat
+  'healthy_boundaries',            // 20: non-agitation, emotional maturity
+  'delayed_gratification_sattva',  // 21: initial bitter friction to nectar
+  'divine_protection_solace',      // 22: faith, universal care in loneliness
+  'cynical_doubt_nihilism',        // 23: spiritual skepticism of sacred truth
+] as const;
+
+export type SemanticDimension = typeof SEMANTIC_DIMENSIONS[number];
+
+// Pre-computed normalized semantic vectors for each verse in the knowledge base
+const VERSE_SEMANTIC_VECTORS: Record<string, number[]> = {
+  'BG2.47': createSparseVector({
+    action_effort_agency: 1.0,
+    outcome_detachment: 1.0,
+    anxiety_overwhelm_burnout: 0.9,
+    discipline_momentum: 0.6,
+  }),
+  'BG2.48': createSparseVector({
+    equanimity_balance_samatvam: 1.0,
+    outcome_detachment: 0.8,
+    anxiety_overwhelm_burnout: 0.6,
+    deep_ocean_peace: 0.7,
+  }),
+  'BG2.20': createSparseVector({
+    grief_bereavement_mourning: 1.0,
+    eternal_soul_immortality: 1.0,
+    impermanence_transience: 0.7,
+  }),
+  'BG2.14': createSparseVector({
+    impermanence_transience: 1.0,
+    equanimity_balance_samatvam: 0.8,
+    grief_bereavement_mourning: 0.6,
+  }),
+  'BG2.63': createSparseVector({
+    anger_rage_loss_of_reason: 1.0,
+    relationship_harmony_forgiving: 0.6,
+    anxiety_overwhelm_burnout: 0.5,
+  }),
+  'BG3.35': createSparseVector({
+    svadharma_authentic_path: 1.0,
+    life_direction_clarity: 0.95,
+    purpose_meaning: 0.85,
+    comparison_envy: 0.9,
+  }),
+  'BG3.8': createSparseVector({
+    discipline_momentum: 1.0,
+    procrastination_delay: 0.95,
+    action_effort_agency: 0.85,
+  }),
+  'BG4.40': createSparseVector({
+    cynical_doubt_nihilism: 1.0,
+    faith_grace_protection: 0.4,
+  }),
+  'BG6.5': createSparseVector({
+    equanimity_balance_samatvam: 0.8,
+    meditation_stillness: 0.7,
+    discipline_momentum: 0.6,
+  }),
+  'BG6.35': createSparseVector({
+    meditation_stillness: 1.0,
+    restless_wandering_mind: 0.95,
+    discipline_momentum: 0.7,
+  }),
+  'BG6.26': createSparseVector({
+    meditation_stillness: 0.9,
+    restless_wandering_mind: 1.0,
+  }),
+  'BG6.19': createSparseVector({
+    meditation_stillness: 1.0,
+    deep_ocean_peace: 0.9,
+  }),
+  'BG2.70': createSparseVector({
+    deep_ocean_peace: 1.0,
+    equanimity_balance_samatvam: 0.9,
+    anxiety_overwhelm_burnout: 0.7,
+  }),
+  'BG2.38': createSparseVector({
+    courage_duty_abhaya: 1.0,
+    action_effort_agency: 0.8,
+    outcome_detachment: 0.8,
+  }),
+  'BG12.13': createSparseVector({
+    relationship_harmony_forgiving: 1.0,
+    truthful_gentle_speech: 0.8,
+    anger_rage_loss_of_reason: 0.6,
+  }),
+  'BG12.15': createSparseVector({
+    healthy_boundaries: 1.0,
+    deep_ocean_peace: 0.8,
+    relationship_harmony_forgiving: 0.7,
+  }),
+  'BG18.37': createSparseVector({
+    delayed_gratification_sattva: 1.0,
+    discipline_momentum: 0.85,
+    procrastination_delay: 0.7,
+  }),
+  'BG17.15': createSparseVector({
+    truthful_gentle_speech: 1.0,
+    relationship_harmony_forgiving: 0.8,
+  }),
+  'BG9.22': createSparseVector({
+    divine_protection_solace: 1.0,
+    faith_grace_protection: 0.9,
+  }),
+  'BG18.58': createSparseVector({
+    divine_protection_solace: 0.9,
+    courage_duty_abhaya: 0.8,
+    action_effort_agency: 0.7,
+  }),
+  'BG18.66': createSparseVector({
+    divine_protection_solace: 1.0,
+    outcome_detachment: 0.9,
+    grief_bereavement_mourning: 0.6,
+  }),
+};
+
+function createSparseVector(weights: Partial<Record<SemanticDimension, number>>): number[] {
+  const vec = new Array(SEMANTIC_DIMENSIONS.length).fill(0);
+  for (let i = 0; i < SEMANTIC_DIMENSIONS.length; i++) {
+    const dim = SEMANTIC_DIMENSIONS[i];
+    if (weights[dim]) {
+      vec[i] = weights[dim]!;
+    }
+  }
+  // Normalize vector to unit length
+  const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+  return norm > 0 ? vec.map((v) => v / norm) : vec;
+}
+
 /**
- * High-EQ Emotional State Detector
- * Maps natural human expressions (grief, anger, burnout, loss, paralysis) to psychological categories.
+ * LAYER 1: NLP Understanding
+ * Extracts emotions, intent, topics, and psychological needs from the user's question.
  */
-export function detectEmotionalTone(query: string): string {
+export function extractNlpUnderstanding(query: string): NlpUnderstanding {
   const lower = query.toLowerCase();
 
-  // 1. Grief, Bereavement, Death & Loss
-  if (
-    lower.includes('passed away') ||
-    lower.includes('death') ||
-    lower.includes('died') ||
-    lower.includes('dying') ||
-    lower.includes('funeral') ||
-    lower.includes('grief') ||
-    lower.includes('grieving') ||
-    lower.includes('crying') ||
-    lower.includes('tears') ||
-    lower.includes('lost my') ||
-    lower.includes('miss my') ||
-    lower.includes('unbearable') ||
-    lower.includes('heartbroken')
-  ) {
-    return 'Grief & Bereavement';
+  const emotions: string[] = [];
+  let intent = 'personal_reflection';
+  const topics: string[] = [];
+  const needs: string[] = [];
+
+  // A. Emotion Extraction
+  if (lower.includes('confused') || lower.includes('uncertain') || lower.includes('not sure') || lower.includes('lost') || lower.includes('torn')) {
+    emotions.push('confusion', 'uncertainty');
+  }
+  if (lower.includes('overwhelm') || lower.includes('exhausted') || lower.includes('burnout') || lower.includes('too much') || lower.includes('drowning') || lower.includes('heavy') || lower.includes('suffocat')) {
+    emotions.push('overwhelm', 'exhaustion');
+  }
+  if (lower.includes('grief') || lower.includes('passed away') || lower.includes('death') || lower.includes('died') || lower.includes('crying') || lower.includes('heartbroken') || lower.includes('bereav')) {
+    emotions.push('grief', 'bereavement');
+  }
+  if (lower.includes('fight') || lower.includes('argument') || lower.includes('angry') || lower.includes('rage') || lower.includes('furious') || lower.includes('resentful') || lower.includes('hate') || lower.includes('regret')) {
+    emotions.push('anger', 'resentment');
+  }
+  if (lower.includes('procrastinat') || lower.includes('lazy') || lower.includes('delay') || lower.includes('cannot start') || lower.includes("can't start") || lower.includes('sluggish') || lower.includes('unmotivated')) {
+    emotions.push('procrastination', 'inertia');
+  }
+  if (lower.includes('compar') || lower.includes('behind') || lower.includes('jealous') || lower.includes('envious') || lower.includes('imposter') || lower.includes('inadequat')) {
+    emotions.push('comparison', 'insecurity');
+  }
+  if (lower.includes('lonely') || lower.includes('alone') || lower.includes('isolated') || lower.includes('hopeless') || lower.includes('no one cares')) {
+    emotions.push('loneliness', 'isolation');
+  }
+  if (lower.includes('overthink') || lower.includes('racing') || lower.includes('restless') || lower.includes('scattered') || lower.includes('distracted')) {
+    emotions.push('restlessness', 'overthinking');
+  }
+  if (emotions.length === 0) {
+    emotions.push('reflective');
   }
 
-  // 2. Anger, Conflict, Heated Arguments & Regret
+  // B. Intent & Topic Extraction
   if (
-    lower.includes('fight') ||
-    lower.includes('fought') ||
-    lower.includes('argument') ||
-    lower.includes('arguing') ||
-    lower.includes('spouse') ||
-    lower.includes('husband') ||
-    lower.includes('wife') ||
-    lower.includes('partner') ||
-    lower.includes('angry') ||
-    lower.includes('rage') ||
-    lower.includes('furious') ||
-    lower.includes('resentful') ||
-    lower.includes('said things i regret') ||
-    lower.includes('hate') ||
-    lower.includes('yelled')
+    lower.includes('which path') ||
+    lower.includes('path in life') ||
+    lower.includes('path i should take') ||
+    lower.includes('confused about which path') ||
+    lower.includes('direction in life') ||
+    lower.includes('what should i do with my life') ||
+    lower.includes('career crossroads')
   ) {
-    return 'Anger & Relationship Conflict';
-  }
-
-  // 3. Overwhelm, Burnout, Stress & Suffocation
-  if (
+    intent = 'life_direction';
+    topics.push('personal_path', 'choice', 'life_direction', 'svadharma');
+    needs.push('clarity', 'reflection', 'decision_support');
+  } else if (
+    lower.includes('purpose') ||
+    lower.includes('working hard but') ||
+    lower.includes('meaning') ||
+    lower.includes('calling') ||
+    lower.includes('empty')
+  ) {
+    intent = 'purpose_discovery';
+    topics.push('purpose', 'svadharma', 'calling', 'authenticity');
+    needs.push('meaning', 'direction', 'non_comparison');
+  } else if (
     lower.includes('overwhelm') ||
     lower.includes('stress') ||
-    lower.includes('burnout') ||
     lower.includes('pressure') ||
-    lower.includes('drowning') ||
-    lower.includes('too much') ||
-    lower.includes('exhausted') ||
-    lower.includes('heavy') ||
-    lower.includes('suffocating')
+    lower.includes('burnout')
   ) {
-    return 'Overwhelm & Burnout';
-  }
-
-  // 4. Procrastination, Laziness & Inertia
-  if (
+    intent = 'stress_relief';
+    topics.push('outcomes', 'workload', 'effort', 'detachment');
+    needs.push('calm', 'release_of_outcomes', 'breathing_room');
+  } else if (
+    lower.includes('passed away') ||
+    lower.includes('death') ||
+    lower.includes('grief') ||
+    lower.includes('loss')
+  ) {
+    intent = 'grief_processing';
+    topics.push('bereavement', 'eternal_soul', 'impermanence');
+    needs.push('gentle_comfort', 'reverence', 'acceptance');
+  } else if (
+    lower.includes('fight') ||
+    lower.includes('argument') ||
+    lower.includes('spouse') ||
+    lower.includes('partner') ||
+    lower.includes('relationship')
+  ) {
+    intent = 'relationship_harmony';
+    topics.push('relationships', 'forgiveness', 'compassion', 'communication');
+    needs.push('softening_defensiveness', 'reconciliation', 'peace');
+  } else if (
     lower.includes('procrastinat') ||
-    lower.includes('lazy') ||
-    lower.includes('delay') ||
-    lower.includes('cannot start') ||
-    lower.includes("can't start") ||
     lower.includes('routine') ||
     lower.includes('habit') ||
-    lower.includes('sluggish') ||
-    lower.includes('unmotivated') ||
-    lower.includes('inertia')
+    lower.includes('lazy')
   ) {
-    return 'Discipline & Momentum';
-  }
-
-  // 5. Confusion, Life Path & Indecision
-  if (
-    lower.includes('confused') ||
-    lower.includes('path') ||
-    lower.includes('direction') ||
-    lower.includes('decision') ||
-    lower.includes('decide') ||
-    lower.includes('crossroads') ||
-    lower.includes('torn') ||
-    lower.includes('doubt') ||
-    lower.includes('what should i do')
-  ) {
-    return 'Confusion & Indecision';
-  }
-
-  // 6. Search for Purpose, Svadharma & Existential Emptiness
-  if (
-    lower.includes('purpose') ||
-    lower.includes('meaning') ||
-    lower.includes('why work') ||
-    lower.includes('unhappy') ||
-    lower.includes('empty') ||
-    lower.includes('calling') ||
-    lower.includes('working hard') ||
-    lower.includes('imposter')
-  ) {
-    return 'Search for Purpose';
-  }
-
-  // 7. Fear of Failure & Intimidation
-  if (
-    lower.includes('fear') ||
-    lower.includes('afraid') ||
-    lower.includes('scared') ||
-    lower.includes('anxious') ||
-    lower.includes('panic') ||
-    lower.includes('fail') ||
-    lower.includes('rejection') ||
-    lower.includes('interview') ||
-    lower.includes('exam')
-  ) {
-    return 'Fear of Failure';
-  }
-
-  // 8. Loneliness, Despair & Rock Bottom
-  if (
-    lower.includes('lonely') ||
-    lower.includes('alone') ||
-    lower.includes('rock bottom') ||
-    lower.includes('hopeless') ||
-    lower.includes('giving up') ||
-    lower.includes('surrender') ||
-    lower.includes('no one cares')
-  ) {
-    return 'Loneliness & Despair';
-  }
-
-  // 9. Inner Stillness, Meditation & Distraction
-  if (
+    intent = 'habit_discipline';
+    topics.push('discipline', 'action', 'momentum', 'habits');
+    needs.push('micro_step', 'breaking_inertia', 'focus');
+  } else if (
     lower.includes('meditat') ||
     lower.includes('stillness') ||
-    lower.includes('quiet') ||
-    lower.includes('peace') ||
-    lower.includes('breath') ||
-    lower.includes('wandering mind') ||
-    lower.includes('adhd') ||
-    lower.includes('distracted')
+    lower.includes('calm my mind') ||
+    lower.includes('overthinking')
   ) {
-    return 'Inner Stillness';
+    intent = 'mindfulness_stillness';
+    topics.push('meditation', 'abhyasa', 'inner_peace', 'stillness');
+    needs.push('breath', 'patience_with_mind', 'quietness');
+  } else {
+    topics.push('general_reflection');
+    needs.push('perspective', 'clarity');
   }
 
-  return 'Personal Reflection';
+  return { emotions, intent, topics, needs };
+}
+
+/**
+ * LAYER 2: Query Enrichment
+ * Enriches the raw query into a semantic representation for vector embedding.
+ */
+export function enrichQuery(raw: string, nlp: NlpUnderstanding): string {
+  return `${raw.trim()}. Context: intent=${nlp.intent}, emotions=${nlp.emotions.join(',')}, topics=${nlp.topics.join(',')}, needs=${nlp.needs.join(',')}`;
+}
+
+/**
+ * Projects an enriched query into the 24-dimensional semantic space.
+ */
+function embedQueryVector(query: string, nlp: NlpUnderstanding): number[] {
+  const lower = query.toLowerCase();
+  const weights: Partial<Record<SemanticDimension, number>> = {};
+
+  // Intent Mapping
+  if (nlp.intent === 'life_direction') {
+    weights.svadharma_authentic_path = 1.0;
+    weights.life_direction_clarity = 1.0;
+    weights.purpose_meaning = 0.8;
+    weights.comparison_envy = 0.7;
+  } else if (nlp.intent === 'purpose_discovery') {
+    weights.svadharma_authentic_path = 0.9;
+    weights.purpose_meaning = 1.0;
+    weights.comparison_envy = 0.8;
+  } else if (nlp.intent === 'stress_relief') {
+    weights.anxiety_overwhelm_burnout = 1.0;
+    weights.outcome_detachment = 0.9;
+    weights.action_effort_agency = 0.8;
+  } else if (nlp.intent === 'grief_processing') {
+    weights.grief_bereavement_mourning = 1.0;
+    weights.eternal_soul_immortality = 0.9;
+    weights.impermanence_transience = 0.7;
+  } else if (nlp.intent === 'relationship_harmony') {
+    weights.relationship_harmony_forgiving = 1.0;
+    weights.truthful_gentle_speech = 0.8;
+    weights.anger_rage_loss_of_reason = 0.6;
+  } else if (nlp.intent === 'habit_discipline') {
+    weights.discipline_momentum = 1.0;
+    weights.procrastination_delay = 0.9;
+    weights.action_effort_agency = 0.8;
+  } else if (nlp.intent === 'mindfulness_stillness') {
+    weights.meditation_stillness = 1.0;
+    weights.restless_wandering_mind = 0.9;
+    weights.deep_ocean_peace = 0.7;
+  }
+
+  // Token Reinforcement
+  if (lower.includes('which path') || lower.includes('path in life') || lower.includes('confused about which path')) {
+    weights.svadharma_authentic_path = Math.max(weights.svadharma_authentic_path || 0, 1.0);
+    weights.life_direction_clarity = Math.max(weights.life_direction_clarity || 0, 1.0);
+  }
+  if (lower.includes('compar') || lower.includes('behind')) {
+    weights.comparison_envy = Math.max(weights.comparison_envy || 0, 0.9);
+  }
+  if (lower.includes('cynical') || lower.includes('nihilist') || lower.includes('faithless')) {
+    weights.cynical_doubt_nihilism = 1.0;
+  }
+
+  return createSparseVector(weights);
+}
+
+/**
+ * Computes Cosine Similarity between two normalized vectors.
+ */
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  if (vecA.length !== vecB.length) return 0;
+  let dotProduct = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+  }
+  return Math.max(0, Math.min(1.0, dotProduct));
+}
+
+/**
+ * LAYER 3 & 4: Hybrid Search (Semantic Vector Search + Lexical Keyword Matching)
+ */
+function computeLexicalScore(queryTokens: string[], shloka: GitaShloka): number {
+  let score = 0;
+  const searchableTokens = new Set([
+    ...shloka.themes.flatMap((t) => t.toLowerCase().split(/\s+/)),
+    ...(shloka.concepts?.flatMap((c) => c.toLowerCase().split(/[-_\s]+/)) || []),
+    ...(shloka.contexts?.flatMap((c) => c.toLowerCase().split(/\s+/)) || []),
+    ...shloka.emotions.flatMap((e) => e.toLowerCase().split(/\s+/)),
+  ]);
+
+  for (const token of queryTokens) {
+    if (searchableTokens.has(token)) {
+      score += 1.0;
+    }
+  }
+
+  return Math.min(1.0, score / Math.max(3, queryTokens.length));
 }
 
 /**
@@ -204,11 +423,9 @@ export function detectEmotionalTone(query: string): string {
 export function isCasualOrNonSpiritualQuery(query: string): boolean {
   const trimmed = query.trim().toLowerCase().replace(/[?!.,]/g, '');
 
-  // 1. Casual Greetings
   if (CASUAL_GREETINGS.has(trimmed)) return true;
   if (trimmed.length < 5) return true;
 
-  // 2. Meta assistant questions
   if (
     trimmed.startsWith('who are you') ||
     trimmed.startsWith('what can you do') ||
@@ -217,8 +434,7 @@ export function isCasualOrNonSpiritualQuery(query: string): boolean {
     return true;
   }
 
-  // 3. Factual trivia / General knowledge questions
-  for (const trigger of TRIVIA_OR_FACTUAL_TRIGGERS) {
+  for (const trigger of OUT_OF_SCOPE_TRIGGERS) {
     if (trimmed.includes(trigger)) {
       return true;
     }
@@ -228,13 +444,20 @@ export function isCasualOrNonSpiritualQuery(query: string): boolean {
 }
 
 /**
- * Proper RAG Retrieval Pipeline for Bhagavad Gita Shlokas
- * Uses multi-vector semantic scoring + emotional resonance + conditional relevance gating.
+ * FULL HYBRID RAG + NLP RELEVANCE PIPELINE
+ * 1. NLP Understanding (Intent, Emotion, Topic, Needs)
+ * 2. Query Enrichment
+ * 3. Dense Vector Search (Cosine Similarity across 24 semantic dimensions)
+ * 4. Lexical Search (Keyword & Concept Overlap)
+ * 5. Top 5 Candidate Generation
+ * 6. Contextual Reranking with Multi-Factor Scoring
+ * 7. Relevance Threshold Gating (finalScore >= 0.72)
  */
 export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
-  const detectedEmotion = detectEmotionalTone(query);
+  const nlpUnderstanding = extractNlpUnderstanding(query);
+  const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
 
-  // 1. Strict Gate: Casual, meta, or factual trivia queries must NOT force a shloka
+  // 1. Strict Exclusion Gate: Casual, meta, household chores, or factual trivia
   if (isCasualOrNonSpiritualQuery(query)) {
     return {
       shloka: null,
@@ -242,106 +465,129 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
       detectedEmotion,
       relevanceScore: 0,
       matchedThemes: [],
+      nlpUnderstanding,
+      retrievalMethod: 'hybrid',
+      semanticScore: 0,
+      keywordScore: 0,
+      contextScore: 0,
+      finalScore: 0,
+      candidateRankings: [],
     };
   }
 
   const queryTokens = tokenizeQuery(query);
-  const normalizedQuery = query.toLowerCase();
+  const queryVector = embedQueryVector(query, nlpUnderstanding);
 
-  let bestShloka: GitaShloka | null = null;
-  let highestScore = 0;
-  let bestMatchedThemes: string[] = [];
+  // 2. Hybrid Retrieval: Score all verses and retrieve Top 5 Candidates
+  const scoredCandidates = BHAGAVAD_GITA_CORPUS.map((shloka) => {
+    const verseVector = VERSE_SEMANTIC_VECTORS[shloka.id] || createSparseVector({});
+    const semanticSim = cosineSimilarity(queryVector, verseVector);
+    const lexicalScore = computeLexicalScore(queryTokens, shloka);
 
-  for (const shloka of BHAGAVAD_GITA_CORPUS) {
-    let score = 0;
-    const currentMatchedThemes: string[] = [];
+    const hybridCandidateScore = 0.60 * semanticSim + 0.40 * lexicalScore;
 
-    // A. Phrase & Substring Matches in Themes (Weight: 5.0)
-    for (const theme of shloka.themes) {
-      const themeLower = theme.toLowerCase();
-      if (normalizedQuery.includes(themeLower)) {
-        score += 5.0;
-        currentMatchedThemes.push(theme);
-      } else {
-        const themeTokens = themeLower.split(/\s+/);
-        for (const tToken of themeTokens) {
-          if (queryTokens.includes(tToken)) {
-            score += 2.5;
-            currentMatchedThemes.push(theme);
-            break;
-          }
-        }
+    return {
+      shloka,
+      semanticSim,
+      lexicalScore,
+      hybridCandidateScore,
+    };
+  });
+
+  // Sort and take Top 5
+  scoredCandidates.sort((a, b) => b.hybridCandidateScore - a.hybridCandidateScore);
+  const top5 = scoredCandidates.slice(0, 5);
+
+  // 3. LAYER 5: Contextual Reranker with Multi-Factor Scoring
+  // finalScore = (semanticSimilarity * 0.40) + (intentMatch * 0.25) + (themeMatch * 0.15) + (emotionalMatch * 0.10) + (contextualMatch * 0.10)
+  const reranked = top5.map((candidate) => {
+    const { shloka, semanticSim, lexicalScore } = candidate;
+
+    // Intent Match
+    let intentMatch = 0.2;
+    if (nlpUnderstanding.intent === 'life_direction') {
+      if (shloka.id === 'BG3.35') intentMatch = 1.0;
+      else if (shloka.id === 'BG2.47') intentMatch = 0.45;
+      else if (shloka.id === 'BG4.40') intentMatch = 0.15; // Caution: 4.40 is NOT for life-path dilemmas
+    } else if (nlpUnderstanding.intent === 'purpose_discovery') {
+      if (shloka.id === 'BG3.35') intentMatch = 1.0;
+      else if (shloka.id === 'BG2.47') intentMatch = 0.5;
+    } else if (nlpUnderstanding.intent === 'stress_relief') {
+      if (shloka.id === 'BG2.47' || shloka.id === 'BG2.48' || shloka.id === 'BG2.70') intentMatch = 1.0;
+    } else if (nlpUnderstanding.intent === 'grief_processing') {
+      if (shloka.id === 'BG2.20' || shloka.id === 'BG2.14') intentMatch = 1.0;
+    } else if (nlpUnderstanding.intent === 'relationship_harmony') {
+      if (shloka.id === 'BG12.13' || shloka.id === 'BG17.15') intentMatch = 1.0;
+    } else if (nlpUnderstanding.intent === 'habit_discipline') {
+      if (shloka.id === 'BG3.8' || shloka.id === 'BG18.37') intentMatch = 1.0;
+    } else if (nlpUnderstanding.intent === 'mindfulness_stillness') {
+      if (shloka.id === 'BG6.35' || shloka.id === 'BG6.26' || shloka.id === 'BG6.19') intentMatch = 1.0;
+    }
+
+    // Theme Match
+    const themeOverlap = shloka.themes.filter((t) => nlpUnderstanding.topics.includes(t.toLowerCase())).length;
+    const themeMatch = Math.min(1.0, themeOverlap > 0 ? 0.8 + 0.2 * themeOverlap : lexicalScore);
+
+    // Emotional Match
+    const emoOverlap = shloka.emotions.filter((e) => nlpUnderstanding.emotions.includes(e.toLowerCase())).length;
+    const emotionalMatch = Math.min(1.0, emoOverlap > 0 ? 0.9 : 0.3);
+
+    // Contextual Match
+    let contextualMatch = 0.3;
+    const normalizedQ = query.toLowerCase();
+    for (const ctx of shloka.contexts || []) {
+      if (normalizedQ.includes(ctx.toLowerCase())) {
+        contextualMatch = 1.0;
+        break;
       }
     }
 
-    // B. Situational Match (Weight: 4.5)
-    for (const situation of shloka.situations) {
-      const sitLower = situation.toLowerCase();
-      if (normalizedQuery.includes(sitLower)) {
-        score += 6.0;
-        currentMatchedThemes.push(situation);
-      } else {
-        const sitTokens = sitLower.split(/\s+/);
-        for (const sToken of sitTokens) {
-          if (queryTokens.includes(sToken) && !STOP_WORDS.has(sToken)) {
-            score += 2.0;
-            break;
-          }
-        }
-      }
+    // Multi-factor formula
+    let finalScore =
+      semanticSim * 0.40 +
+      intentMatch * 0.25 +
+      themeMatch * 0.15 +
+      emotionalMatch * 0.10 +
+      contextualMatch * 0.10;
+
+    // Apply explicit caution penalty if verse explicitly warns against this context
+    if (shloka.id === 'BG4.40' && nlpUnderstanding.intent === 'life_direction') {
+      finalScore *= 0.4; // Harsh penalty: BG4.40 must never hijack life direction queries
     }
 
-    // C. Emotional Resonance Affinity (Weight: 4.0)
-    for (const emotion of shloka.emotions) {
-      const emoLower = emotion.toLowerCase();
-      if (normalizedQuery.includes(emoLower)) {
-        score += 4.5;
-      }
-    }
+    const roundedFinal = Math.min(1.0, Math.round(finalScore * 100) / 100);
 
-    // D. Emotional Category Resonance Boost
-    // If the shloka's themes directly address the detected emotion
-    if (
-      (detectedEmotion === 'Grief & Bereavement' && (shloka.id === 'BG2.20' || shloka.id === 'BG2.14')) ||
-      (detectedEmotion === 'Anger & Relationship Conflict' && (shloka.id === 'BG2.63' || shloka.id === 'BG12.13' || shloka.id === 'BG17.15')) ||
-      (detectedEmotion === 'Overwhelm & Burnout' && (shloka.id === 'BG2.47' || shloka.id === 'BG2.48' || shloka.id === 'BG2.70')) ||
-      (detectedEmotion === 'Discipline & Momentum' && (shloka.id === 'BG3.8' || shloka.id === 'BG18.37')) ||
-      (detectedEmotion === 'Search for Purpose' && (shloka.id === 'BG3.35')) ||
-      (detectedEmotion === 'Confusion & Indecision' && (shloka.id === 'BG4.40' || shloka.id === 'BG2.47')) ||
-      (detectedEmotion === 'Inner Stillness' && (shloka.id === 'BG6.35' || shloka.id === 'BG6.26' || shloka.id === 'BG6.19')) ||
-      (detectedEmotion === 'Loneliness & Despair' && (shloka.id === 'BG18.66' || shloka.id === 'BG9.22' || shloka.id === 'BG18.58'))
-    ) {
-      score += 4.0;
-    }
+    return {
+      shloka,
+      semanticSim: Math.round(semanticSim * 100) / 100,
+      keywordScore: Math.round(lexicalScore * 100) / 100,
+      contextScore: Math.round(contextualMatch * 100) / 100,
+      finalScore: roundedFinal,
+    };
+  });
 
-    // E. Textual Token Match in Translation & Meaning (Weight: 1.0)
-    const combinedContent = `${shloka.translation} ${shloka.meaning}`.toLowerCase();
-    for (const token of queryTokens) {
-      if (combinedContent.includes(token)) {
-        score += 1.0;
-      }
-    }
+  // Sort reranked candidates by finalScore
+  reranked.sort((a, b) => b.finalScore - a.finalScore);
 
-    // Track best candidate
-    if (score > highestScore) {
-      highestScore = score;
-      bestShloka = shloka;
-      bestMatchedThemes = [...new Set(currentMatchedThemes)];
-    }
-  }
+  const bestCandidate = reranked[0];
+  const candidateRankings = reranked.map((c) => ({ id: c.shloka.id, finalScore: c.finalScore }));
 
-  // Normalize score between 0.0 and 1.0
-  const normalizedScore = Math.min(1.0, Math.round((highestScore / 14) * 100) / 100);
-
-  // RELEVANCE GATE:
-  // Must pass minimum threshold of 0.35 AND have meaningful signal matches
-  const isShlokaRelevant = normalizedScore >= 0.35 && bestShloka !== null;
+  // LAYER 6: Relevance Threshold Gating
+  // Threshold = 0.70 (Strict: only genuinely relevant teachings pass)
+  const isShlokaRelevant = bestCandidate && bestCandidate.finalScore >= 0.70;
 
   return {
-    shloka: isShlokaRelevant ? bestShloka : null,
+    shloka: isShlokaRelevant ? bestCandidate.shloka : null,
     isShlokaRelevant,
     detectedEmotion,
-    relevanceScore: normalizedScore,
-    matchedThemes: bestMatchedThemes,
+    relevanceScore: bestCandidate ? bestCandidate.finalScore : 0,
+    matchedThemes: bestCandidate ? bestCandidate.shloka.themes : [],
+    nlpUnderstanding,
+    retrievalMethod: 'hybrid',
+    semanticScore: bestCandidate ? bestCandidate.semanticSim : 0,
+    keywordScore: bestCandidate ? bestCandidate.keywordScore : 0,
+    contextScore: bestCandidate ? bestCandidate.contextScore : 0,
+    finalScore: bestCandidate ? bestCandidate.finalScore : 0,
+    candidateRankings,
   };
 }
