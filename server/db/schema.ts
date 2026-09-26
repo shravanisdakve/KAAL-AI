@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS guidance_sessions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE guidance_sessions ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
+
 CREATE INDEX IF NOT EXISTS idx_guidance_sessions_session_id 
 ON guidance_sessions (session_id);
 

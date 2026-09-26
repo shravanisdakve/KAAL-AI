@@ -102,9 +102,6 @@ class DatabaseManager {
         const client = await this.pool.connect();
         try {
           await client.query(CREATE_GUIDANCE_SESSIONS_TABLE_SQL);
-          // Migration: Ensure session_id column exists
-          await client.query('ALTER TABLE guidance_sessions ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);');
-          await client.query('CREATE INDEX IF NOT EXISTS idx_guidance_sessions_session_id ON guidance_sessions (session_id);');
           this.isPostgresAvailable = true;
           console.log('✓ PostgreSQL connected and session schema verified.');
 
