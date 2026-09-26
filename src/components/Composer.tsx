@@ -115,7 +115,7 @@ export const Composer: React.FC<ComposerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 pb-4 pt-2">
+    <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 pb-3 sm:pb-4 pt-2 min-w-0">
       {validationError && (
         <div className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-200/80 rounded-lg px-3 py-1.5 flex items-center justify-between">
           <span>{validationError}</span>
@@ -129,7 +129,7 @@ export const Composer: React.FC<ComposerProps> = ({
       )}
 
       {/* Composer Container Card */}
-      <div className="relative bg-white border border-gray-200/90 rounded-2xl p-4 shadow-xs focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100 transition-all">
+      <div className="relative bg-white border border-gray-200/90 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100 transition-all min-w-0">
         <textarea
           ref={textareaRef}
           value={question}
@@ -141,21 +141,21 @@ export const Composer: React.FC<ComposerProps> = ({
           placeholder="Ask KAAL anything..."
           disabled={isLoading}
           rows={2}
-          className="w-full resize-none text-[15px] text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none pr-24 leading-relaxed max-h-48"
+          className="w-full resize-none text-[14px] sm:text-[15px] text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none pr-20 sm:pr-24 leading-relaxed max-h-48"
         />
 
         {/* Action Buttons in Bottom Right */}
-        <div className="absolute right-3.5 bottom-3.5 flex items-center gap-2">
+        <div className="absolute right-2.5 sm:right-3.5 bottom-2.5 sm:bottom-3.5 flex items-center gap-1.5 sm:gap-2">
           {/* Microphone Button */}
           <button
             type="button"
             onClick={toggleVoiceRecording}
-            className={`p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer ${
+            className={`p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer ${
               isRecording ? 'text-red-500 bg-red-50 animate-pulse' : ''
             }`}
             title={isRecording ? 'Listening...' : 'Voice Dictation'}
           >
-            {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+            {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
           </button>
 
           {/* Send Button */}
@@ -163,14 +163,14 @@ export const Composer: React.FC<ComposerProps> = ({
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !question.trim()}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
               question.trim() && !isLoading
                 ? 'bg-[#1c2226] text-white hover:bg-black shadow-xs'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
             title="Send (Enter)"
           >
-            <ArrowUp size={18} strokeWidth={2.4} />
+            <ArrowUp size={17} strokeWidth={2.4} />
           </button>
         </div>
       </div>

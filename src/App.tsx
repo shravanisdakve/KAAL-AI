@@ -211,7 +211,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#fafbfa] text-gray-900 font-sans antialiased">
+    <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#fafbfa] text-gray-900 font-sans antialiased">
       {/* Left Collapsible History Sidebar */}
       <Sidebar
         sessions={sessions}
@@ -233,7 +233,7 @@ export default function App() {
       />
 
       {/* Main Workspace */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#fafbfa] relative">
+      <div className="flex-1 min-w-0 max-w-full flex flex-col h-full overflow-hidden bg-[#fafbfa] relative">
         {/* Top Assistant Header */}
         <AssistantHeader
           onToggleSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
@@ -242,8 +242,8 @@ export default function App() {
         />
 
         {/* Scrollable Conversation Content Area */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 scroll-smooth">
-          <div className="max-w-4xl mx-auto">
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4 md:px-8 py-4 sm:py-6 scroll-smooth">
+          <div className="w-full max-w-4xl mx-auto min-w-0">
             {activeSession ? (
               activeSession.messages && activeSession.messages.length > 0 ? (
                 activeSession.messages.map((exchange, idx) => (

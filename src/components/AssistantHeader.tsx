@@ -14,14 +14,14 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   isMobile,
 }) => {
   return (
-    <header className="h-14 border-b border-gray-200/80 bg-white/90 backdrop-blur-md px-4 flex items-center justify-between shrink-0 select-none relative z-30">
+    <header className="h-14 border-b border-gray-200/80 bg-white/90 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between shrink-0 select-none relative z-30 w-full min-w-0">
       {/* Left: Assistant Branding */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {isMobile && (
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 rounded-lg transition cursor-pointer touch-manipulation flex items-center justify-center"
+            className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 active:bg-gray-100 rounded-lg transition cursor-pointer touch-manipulation flex items-center justify-center shrink-0"
             aria-label="Open conversation history menu"
             title="Open conversation history"
           >
@@ -31,16 +31,16 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
 
         <KaalAvatar size="sm" />
 
-        <div className="flex flex-col">
-          <span className="font-semibold text-gray-900 text-sm tracking-tight leading-none">
+        <div className="flex flex-col min-w-0">
+          <span className="font-semibold text-gray-900 text-sm tracking-tight leading-none truncate">
             KAAL AI
           </span>
-          <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex items-center gap-1.5 mt-1 min-w-0">
             <span
               className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"
               title="Online"
             />
-            <span className="text-[11px] text-gray-500 font-normal leading-none">
+            <span className="text-[11px] text-gray-500 font-normal leading-none truncate">
               Online • Thoughtful Guidance
             </span>
           </div>
