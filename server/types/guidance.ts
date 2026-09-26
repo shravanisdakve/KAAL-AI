@@ -87,7 +87,7 @@ export interface StructuredGuidanceResponse {
   whyThisRelates?: string; // Intellectual bridge explaining why the verse connects to user's situation
   detectedEmotion?: string;
   reflectionPrompt?: string;
-  situationVisual?: SituationVisual; // Bespoke situational visual generated on the fly
+  situationVisual?: SituationVisual | null; // Bespoke situational visual generated on the fly, or null if not applicable
   meta?: {
     category: GuidanceCategory;
     pattern: string;

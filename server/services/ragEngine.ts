@@ -280,20 +280,61 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
     lower.includes('choose between') ||
     lower.includes('choice between') ||
     lower.includes('choosing between') ||
-    lower.includes('parents want') ||
-    lower.includes('family want') ||
-    lower.includes('family pressure') ||
-    lower.includes('parental expectation') ||
-    lower.includes('external expectation') ||
+    (lower.includes('parents want') && (lower.includes('become') || lower.includes('career') || lower.includes('path') || lower.includes('pursue') || lower.includes('doctor') || lower.includes('engineer'))) ||
+    (lower.includes('family want') && (lower.includes('become') || lower.includes('career') || lower.includes('path') || lower.includes('pursue'))) ||
     (lower.includes('doctor') && lower.includes('design')) ||
     (lower.includes('medicine') && lower.includes('design')) ||
     lower.includes('vocation') ||
     lower.includes('profession');
 
+  const isComparisonOrExpectations =
+    lower.includes('compar') ||
+    lower.includes('cousin') ||
+    lower.includes('wasting my potential') ||
+    lower.includes('not good enough') ||
+    lower.includes('carrying their expectations') ||
+    lower.includes('stop carrying') ||
+    lower.includes('measuring up') ||
+    lower.includes('measure up') ||
+    lower.includes('self-worth') ||
+    lower.includes('self worth') ||
+    lower.includes('parental expectation') ||
+    lower.includes('external expectation') ||
+    (lower.includes('parent') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar') || lower.includes('potential'))) ||
+    (lower.includes('family') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar')));
+
+  const isRelationshipGeneral =
+    lower.includes('fight') ||
+    lower.includes('argument') ||
+    lower.includes('spouse') ||
+    lower.includes('partner') ||
+    lower.includes('relationship') ||
+    lower.includes('in-law');
+
   if (isLifeDirection) {
     intent = 'life_direction';
     topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
     needs.push('clarity', 'authentic_direction', 'decision_support', 'boundary_setting');
+  } else if (isComparisonOrExpectations) {
+    intent = 'relationship_conflict';
+    topics.push(
+      'relationship_conflict',
+      'external_expectations',
+      'comparison',
+      'self_worth',
+      'boundaries',
+      'parental_expectations'
+    );
+    needs.push(
+      'self_worth',
+      'healthy_boundaries',
+      'emotional_separation',
+      'internal_validation'
+    );
+  } else if (isRelationshipGeneral) {
+    intent = 'relationship_harmony';
+    topics.push('relationships', 'forgiveness', 'compassion', 'communication');
+    needs.push('softening_defensiveness', 'reconciliation', 'peace');
   } else if (
     lower.includes('purpose') ||
     lower.includes('working hard but') ||
@@ -322,16 +363,6 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
     intent = 'grief_processing';
     topics.push('bereavement', 'eternal_soul', 'impermanence');
     needs.push('gentle_comfort', 'reverence', 'acceptance');
-  } else if (
-    lower.includes('fight') ||
-    lower.includes('argument') ||
-    lower.includes('spouse') ||
-    lower.includes('partner') ||
-    lower.includes('relationship')
-  ) {
-    intent = 'relationship_harmony';
-    topics.push('relationships', 'forgiveness', 'compassion', 'communication');
-    needs.push('softening_defensiveness', 'reconciliation', 'peace');
   } else if (
     lower.includes('procrastinat') ||
     lower.includes('routine') ||
@@ -391,10 +422,13 @@ function embedQueryVector(query: string, nlp: NlpUnderstanding): number[] {
     weights.grief_bereavement_mourning = 1.0;
     weights.eternal_soul_immortality = 0.9;
     weights.impermanence_transience = 0.7;
-  } else if (nlp.intent === 'relationship_harmony') {
+  } else if (nlp.intent === 'relationship_harmony' || nlp.intent === 'relationship_conflict') {
     weights.relationship_harmony_forgiving = 1.0;
     weights.truthful_gentle_speech = 0.8;
     weights.anger_rage_loss_of_reason = 0.6;
+    weights.healthy_boundaries = 1.0;
+    weights.comparison_envy = 0.9;
+    weights.svadharma_authentic_path = 0.7;
   } else if (nlp.intent === 'habit_discipline') {
     weights.discipline_momentum = 1.0;
     weights.procrastination_delay = 0.9;
@@ -422,8 +456,9 @@ function embedQueryVector(query: string, nlp: NlpUnderstanding): number[] {
     weights.purpose_meaning = Math.max(weights.purpose_meaning || 0, 0.85);
     weights.comparison_envy = Math.max(weights.comparison_envy || 0, 0.8);
   }
-  if (lower.includes('compar') || lower.includes('behind')) {
-    weights.comparison_envy = Math.max(weights.comparison_envy || 0, 0.9);
+  if (lower.includes('compar') || lower.includes('behind') || lower.includes('cousin') || lower.includes('not good enough')) {
+    weights.comparison_envy = Math.max(weights.comparison_envy || 0, 1.0);
+    weights.healthy_boundaries = Math.max(weights.healthy_boundaries || 0, 0.9);
   }
   if (lower.includes('cynical') || lower.includes('nihilist') || lower.includes('faithless')) {
     weights.cynical_doubt_nihilism = 1.0;
@@ -530,8 +565,11 @@ function rerankCandidates(
       if (shloka.id === 'BG2.47' || shloka.id === 'BG2.48' || shloka.id === 'BG2.70') intentMatch = 1.0;
     } else if (nlpUnderstanding.intent === 'grief_processing') {
       if (shloka.id === 'BG2.20' || shloka.id === 'BG2.14') intentMatch = 1.0;
-    } else if (nlpUnderstanding.intent === 'relationship_harmony') {
+    } else if (nlpUnderstanding.intent === 'relationship_harmony' || nlpUnderstanding.intent === 'relationship_conflict') {
       if (shloka.id === 'BG12.13' || shloka.id === 'BG17.15') intentMatch = 1.0;
+      else if (shloka.id === 'BG12.15') intentMatch = 0.9;
+      else if (shloka.id === 'BG6.5') intentMatch = 0.8;
+      else if (shloka.id === 'BG3.35') intentMatch = 0.7;
     } else if (nlpUnderstanding.intent === 'habit_discipline') {
       if (shloka.id === 'BG3.8' || shloka.id === 'BG18.37') intentMatch = 1.0;
     } else if (nlpUnderstanding.intent === 'mindfulness_stillness') {

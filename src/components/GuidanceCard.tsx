@@ -96,11 +96,13 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
           </div>
 
           {/* Subtle Visual Element — Dynamic Situational Landscape Generated On the Fly */}
-          <SituationalVisual
-            visual={response.situationVisual}
-            category={activeCategory}
-            question={response.title}
-          />
+          {response.situationVisual && (
+            <SituationalVisual
+              visual={response.situationVisual}
+              category={activeCategory}
+              question={response.title}
+            />
+          )}
         </div>
 
         {/* Section 2: AUTHENTIC BHAGAVAD GITA SHLOKA CARD (ONLY IF RAG RETRIEVED & RELEVANT) */}

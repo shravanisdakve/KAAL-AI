@@ -291,6 +291,85 @@ async function runTestSuite() {
     assert.strictEqual(response.steps.length, 3);
   });
 
+  await test('Parent Comparison Dilemma: extracts relationship conflict and provides direct advice on comparison, expectations, self-worth, and boundaries without forcing shloka', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const query = "My parents keep comparing me to my cousins and telling me I'm wasting my potential. I know they care about me, but every conversation leaves me feeling like I'm not good enough. How do I stop carrying their expectations around all the time?";
+    
+    // NLP Layer verification
+    const nlp = extractNlpUnderstanding(query);
+    assert.strictEqual(nlp.intent, 'relationship_conflict');
+    assert.ok(nlp.topics.includes('comparison'));
+    assert.ok(nlp.topics.includes('external_expectations'));
+    assert.ok(nlp.topics.includes('self_worth'));
+    assert.ok(nlp.topics.includes('boundaries'));
+    assert.ok(nlp.needs.includes('self_worth'));
+    assert.ok(nlp.needs.includes('healthy_boundaries'));
+    assert.ok(nlp.emotions.includes('comparison') || nlp.emotions.includes('insecurity'));
+
+    // Guidance synthesis verification (No shloka forced)
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.whyThisRelates, undefined);
+    assert.ok(!response.title.includes('Welcome'));
+    assert.ok(response.title.includes('Self-Worth') || response.title.includes('Comparison') || response.title.includes('Boundaries'));
+    
+    const replyLower = response.conversationalReply.toLowerCase();
+    assert.ok(replyLower.includes('compar'));
+    assert.ok(replyLower.includes('parent') || replyLower.includes('expectation'));
+    assert.ok(replyLower.includes('worth') || replyLower.includes('potential') || replyLower.includes('inadequat'));
+    assert.ok(replyLower.includes('boundar') || replyLower.includes('absorb'));
+
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.steps.some((s) => s.toLowerCase().includes('boundar') || s.toLowerCase().includes('compar')));
+  });
+
+  await test('Relationship Conflict Regression: delivers compassionate conflict advice with actionable steps', async () => {
+    const query = "I had a terrible fight with my spouse and said things I regret";
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.ok(response.title.length > 0);
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.conversationalReply.length > 50);
+  });
+
+  await test('Grief & Loss Regression: delivers compassionate bereavement guidance with gentle steps', async () => {
+    const query = "My grandmother passed away yesterday and I cannot stop crying. The grief is unbearable.";
+    const { response } = await runGuidanceEngine(query);
+    assert.ok(response.title.length > 0);
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.conversationalReply.length > 50);
+  });
+
+  await test('Stress & Overwhelm Regression: delivers situation-specific present-moment guidance', async () => {
+    const query = "I feel completely overwhelmed by everything happening in my life and I don't know where to begin.";
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Stress');
+    assert.ok(response.title.includes('Burden') || response.title.includes('Outcomes') || response.title.includes('Stress'));
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Procrastination Regression: delivers momentum-first micro-step guidance', async () => {
+    const query = "I keep putting off my work and procrastinating even though the deadline is approaching.";
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Discipline');
+    assert.ok(response.title.includes('Action') || response.title.includes('Inertia') || response.title.includes('Discipline'));
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Irrelevant Practical Query Regression: laptop failure yields troubleshooting steps without forcing Gita shloka', async () => {
+    const query = "My laptop won't turn on and I'm getting stressed.";
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.whyThisRelates, undefined);
+    assert.ok(!response.title.includes('Welcome'));
+    assert.ok(response.title.includes('Troubleshooting') || response.title.includes('Presence'));
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.steps[0].toLowerCase().includes('power') || response.steps[0].toLowerCase().includes('cable'));
+  });
+
   // 5. Database Operations & Dual-Persistence
   await test('Database: creates and retrieves a guidance session with RAG shloka payload', async () => {
     const question = 'Test session: overwhelmed with stress';
@@ -341,8 +420,8 @@ async function runTestSuite() {
     await dbClient.deleteSessionById(sessionB.id, userBSessionId);
   });
 
-  // 6. Dynamic Situational Visual & Multi-Turn Dialogue
-  await test('Situational Visual: generates custom bespoke visual scene on the fly', async () => {
+  // 6. Dynamic Situational Visual & Intentional Visual Eligibility
+  await test('Situational Visual: generates custom bespoke visual scene on the fly for life path dilemma', async () => {
     const { response } = await runGuidanceEngine('I feel confused about which path I should take in life.');
     assert.ok(response.situationVisual);
     assert.strictEqual(response.situationVisual.theme, 'crossroad-dawn');
@@ -351,6 +430,83 @@ async function runTestSuite() {
     assert.ok(response.situationVisual.palette.skyTop);
     assert.ok(response.situationVisual.palette.skyBottom);
     assert.strictEqual(response.situationVisual.elements.hasPath, true);
+  });
+
+  await test('Visual Eligibility: approves visual for career dilemma with parental expectations', async () => {
+    const query = "I'm confused about which career path I should choose. My parents want me to become a doctor, but I want to pursue design.";
+    const { response } = await runGuidanceEngine(query);
+    assert.ok(response.situationVisual, 'Career dilemma must have a situational visual');
+    assert.strictEqual(response.situationVisual.theme, 'crossroad-dawn');
+    assert.strictEqual(response.isShlokaRelevant, true);
+    assert.strictEqual(response.shloka?.id, 'BG3.35');
+  });
+
+  await test('Visual Eligibility: approves grounded self-worth visual for parent comparison', async () => {
+    const query = "My parents keep comparing me to my cousins and I feel like I'm never enough.";
+    const { response } = await runGuidanceEngine(query);
+    assert.ok(response.situationVisual, 'Parent comparison dilemma must have a situational visual');
+    assert.strictEqual(response.situationVisual.theme, 'quiet-anchor');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+  });
+
+  await test('Visual Eligibility: approves bridge visual for relationship arguments', async () => {
+    const query = 'My partner and I keep having the same argument.';
+    const { response } = await runGuidanceEngine(query);
+    assert.ok(response.situationVisual, 'Relationship argument dilemma must have a situational visual');
+    assert.strictEqual(response.situationVisual.theme, 'lantern-bridge');
+  });
+
+  await test('Visual Eligibility: approves calming water visual for overwhelm and burnout', async () => {
+    const query = "I'm overwhelmed by deadlines and can't switch my mind off.";
+    const { response } = await runGuidanceEngine(query);
+    assert.ok(response.situationVisual, 'Overwhelm dilemma must have a situational visual');
+    assert.strictEqual(response.situationVisual.theme, 'still-lake');
+  });
+
+  await test('Visual Eligibility: approves respectful river visual for grief and bereavement', async () => {
+    const query = "I lost someone close to me and I'm having a hard time accepting it.";
+    const { response } = await runGuidanceEngine(query);
+    assert.ok(response.situationVisual, 'Grief dilemma must have a situational visual');
+    assert.strictEqual(response.situationVisual.theme, 'sacred-river');
+  });
+
+  await test('Visual Gating: suppresses visual for technical hardware issue even with stress', async () => {
+    const query = "My laptop won't turn on and I'm stressed.";
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.situationVisual, null, 'Hardware failure must not receive a visual');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+  });
+
+  await test('Visual Gating: suppresses visual for laptop assignment deadline query', async () => {
+    const query = "My laptop won't turn on and my assignment is due tonight.";
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.situationVisual, null, 'Laptop issue must return situationVisual: null');
+  });
+
+  await test('Visual Gating: suppresses visual for factual trivia query', async () => {
+    const query = "What's the capital of France?";
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.situationVisual, null, 'Factual trivia must return situationVisual: null');
+  });
+
+  await test('Visual Gating: suppresses visual for casual greetings', async () => {
+    const query = 'Hello';
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.situationVisual, null, 'Greeting must return situationVisual: null');
+  });
+
+  await test('Visual Gating: suppresses visual for technical coding queries', async () => {
+    const query = 'Can you explain recursion in JavaScript?';
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.situationVisual, null, 'Coding query must return situationVisual: null');
+  });
+
+  await test('Visual Gating: suppresses visual for simple domestic chores', async () => {
+    const query = 'How to boil an egg';
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.situationVisual, null, 'Simple chore must return situationVisual: null');
   });
 
   await test('Multi-Turn Conversation: appends dialogue turns to the same session', async () => {

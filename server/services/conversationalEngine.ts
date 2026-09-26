@@ -216,18 +216,149 @@ export function synthesizeEmpatheticFallback(
       };
     }
 
-    // 1G. General Guidance Fallback (Respectful, Situation-Specific, Non-Greeting)
+    // 1G. Real Guidance Dilemma: Parental Comparison, Expectations & Self-Worth
+    const isComparisonOrParentalExpectations =
+      intent === 'relationship_conflict' ||
+      (category === 'Relationships' && (qLower.includes('compar') || qLower.includes('expect') || qLower.includes('parent') || qLower.includes('cousin'))) ||
+      qLower.includes('comparing') ||
+      qLower.includes('comparison') ||
+      qLower.includes('cousin') ||
+      qLower.includes('wasting my potential') ||
+      qLower.includes('not good enough') ||
+      qLower.includes('carrying their expectations') ||
+      qLower.includes('stop carrying') ||
+      qLower.includes('measuring up') ||
+      qLower.includes('measure up') ||
+      qLower.includes('self-worth') ||
+      qLower.includes('self worth') ||
+      (qLower.includes('parent') && (qLower.includes('expect') || qLower.includes('compar') || qLower.includes('potential'))) ||
+      (qLower.includes('family') && (qLower.includes('expect') || qLower.includes('compar')));
+
+    if (isComparisonOrParentalExpectations) {
+      return {
+        title: 'Reclaiming Self-Worth and Setting Boundaries Amid Parental Comparison',
+        summary:
+          'You can deeply love and respect your parents without allowing their anxieties, comparisons, or expectations to define your internal self-worth.',
+        conversationalReply:
+          'It is deeply exhausting to walk away from conversations with the people you love feeling inadequate, as though who you are is constantly being measured against someone else’s highlight reel.\n\n' +
+          'When parents compare you to cousins or tell you you are "wasting your potential," it almost always stems from their own unexamined anxieties and their narrow blueprint for safety and success. They project their fears onto you disguised as care. But understanding that their intentions come from concern does not mean you have to absorb their emotional weight.\n\n' +
+          'Their expectations belong to them; your life belongs to you. Setting healthy internal boundaries means learning to witness their disappointment or worry without adopting it as proof that you are failing. Your worth is inherent—it is not an auction determined by how closely you resemble someone else’s life trajectory.',
+        reflectionPrompt:
+          'What is one expectation you are currently carrying that belongs to your parents rather than your own authentic values?',
+        steps: [
+          'Practice internal boundary-setting: when comparisons happen, mentally label them as their anxiety, not your truth.',
+          'Write down 3 qualities or accomplishments you genuinely respect about yourself that have nothing to do with family comparisons.',
+          'Define one gentle boundary or conversational topic shift for your next interaction to protect your peace.',
+        ],
+      };
+    }
+
+    // 1H. Real Guidance Dilemma: Relationship Conflict & Interpersonal Friction
+    const isRelationshipConflict =
+      intent === 'relationship_harmony' ||
+      category === 'Relationships' ||
+      qLower.includes('fight') ||
+      qLower.includes('argument') ||
+      qLower.includes('spouse') ||
+      qLower.includes('partner') ||
+      qLower.includes('relationship') ||
+      qLower.includes('said things i regret');
+
+    if (isRelationshipConflict) {
+      return {
+        title: 'De-escalating Relationship Conflict through Compassionate Presence',
+        summary:
+          'Winning an argument is meaningless if it damages the human connection. True strength lies in softening defensiveness and listening beneath the anger.',
+        conversationalReply:
+          'Conflict with people we care about creates an intense, hollow ache. In the heat of disagreement, the ego instinctively raises shields, desperate to prove it was right or that its pain was justified.\n\n' +
+          'When tempers cool, remember that harsh words are almost always a reaction to feeling unheard, misunderstood, or unappreciated. Someone has to be courageous enough to drop the armor first. Stepping back is not giving in—it is prioritizing the relationship over the temporary satisfaction of winning a debate.',
+        reflectionPrompt:
+          'What would it look like to tell the other person: "You matter more to me than winning this argument"?',
+        steps: [
+          'Allow physical adrenaline to fully subside before continuing any sensitive discussion.',
+          'Acknowledge your own share of the tension without immediately adding a defensive justification.',
+          'Listen to their perspective for 5 minutes without interrupting or formulating a rebuttal.',
+        ],
+      };
+    }
+
+    // 1I. Real Guidance Dilemma: Grief, Bereavement & Heartbreak
+    const isGrief =
+      intent === 'grief_processing' ||
+      qLower.includes('passed away') ||
+      qLower.includes('grief') ||
+      qLower.includes('death') ||
+      qLower.includes('died') ||
+      qLower.includes('crying') ||
+      qLower.includes('loss') ||
+      qLower.includes('heartbroken');
+
+    if (isGrief) {
+      return {
+        title: 'Honoring Grief with Gentle Self-Compassion',
+        summary:
+          'Grief cannot be rushed or rationalized away. Give yourself permission to mourn with tenderness, knowing healing happens in quiet layers.',
+        conversationalReply:
+          'I want to gently acknowledge how tender and painful this feels right now. When profound loss enters our life, the world feels drastically altered, and normal demands can feel completely impossible.\n\n' +
+          'You do not have to put on a brave face, and you do not have to "move on" quickly. Tears and sorrow are simply love seeking an expression. Wrap yourself in patience today, allow yourself to rest, and know that honoring your pain is part of honoring what was lost.',
+        reflectionPrompt:
+          'Can you soften the expectations you place on yourself today and allow yourself to simply rest?',
+        steps: [
+          'Acknowledge your emotional fatigue without judging or criticizing yourself for feeling weak.',
+          'Engage in one quiet, nurturing act today: warm tea, gentle rest, or sitting in stillness.',
+          'Allow yourself to feel whatever arises today in small, manageable waves.',
+        ],
+      };
+    }
+
+    // 1J. Real Guidance Dilemma: Procrastination & Breaking Inertia
+    const isProcrastination =
+      intent === 'habit_discipline' ||
+      category === 'Discipline' ||
+      qLower.includes('procrastinat') ||
+      qLower.includes('lazy') ||
+      qLower.includes('routine') ||
+      qLower.includes('habit') ||
+      qLower.includes('cannot start') ||
+      qLower.includes("can't start") ||
+      qLower.includes('putting off') ||
+      qLower.includes('inertia');
+
+    if (isProcrastination) {
+      return {
+        title: 'Action Precedes Motivation: Breaking Inertia with a Micro-Step',
+        summary:
+          'Waiting to feel motivated is a trap. Action creates momentum. Lower the threshold for starting to break the grip of hesitation.',
+        conversationalReply:
+          'Sitting with unfinished tasks and feeling mounting guilt is an exhausting cycle. Procrastination is almost never about laziness; it is an emotional defense mechanism against overwhelm or fear of imperfect results.\n\n' +
+          'The antidote is not waiting for a burst of willpower, but making the initial movement so small that resistance cannot stop you. When you commit to just two minutes of honest effort without demanding perfection, the mental friction evaporates.',
+        reflectionPrompt:
+          'What is a ridiculously small two-minute action you can take right now that requires almost zero willpower?',
+        steps: [
+          'Break the intimidating project down to a single 2-minute starting action.',
+          'Eliminate phone notifications and extra browser tabs for the next 20 minutes.',
+          'Count backward 3-2-1 and take that first physical micro-step immediately.',
+        ],
+      };
+    }
+
+    // 1K. General Guidance Fallback (Respectful, Situation-Specific, Non-Greeting)
+    const displayCategory = category || 'Clarity';
+    const emotionText = detectedEmotion ? ` amidst feelings of ${detectedEmotion.toLowerCase()}` : '';
+
     return {
-      title: 'Cultivating Perspective Through Honest Inquiry',
+      title: `Navigating Your Dilemma with ${displayCategory}`,
       summary:
-        'Clarity begins when you step back from urgency and examine your thoughts with gentle curiosity.',
+        'Clarity begins when you step back from urgency, examine what is truly within your control, and proceed with deliberate, calm presence.',
       conversationalReply:
-        `I hear what you are reflecting on. Sometimes the clearest insights do not come from rushing toward an immediate answer, but from pausing to notice what you are truly feeling beneath the question. You do not have to carry everything all at once. What feels like the most essential thing for your peace of mind today?`,
-      reflectionPrompt: 'If you gave yourself permission to move slowly, what would your next step look like?',
+        `I hear what you are carrying${emotionText}. When uncertainty or complex decisions weigh on the mind, our natural instinct is often to rush toward an immediate resolution or obsess over what we cannot predict.\n\n` +
+        `You do not have to carry the whole puzzle at once. Take a breath and separate what demands your immediate integrity from what is outside your current control. True peace begins when you anchor your attention in the honest step directly before you.`,
+      reflectionPrompt:
+        'If you gave yourself permission to move forward one small step at a time, what would today’s step be?',
       steps: [
-        'Notice your current breath and emotional state without judging yourself.',
-        'Identify what is actually within your immediate control today.',
-        'Take one small, honest step forward with presence.',
+        'Notice your current emotional state without judgment or self-criticism.',
+        'Identify the single aspect of this situation that is physically within your control today.',
+        'Take one deliberate, grounded action without worrying about distant outcomes.',
       ],
     };
   }
@@ -465,6 +596,25 @@ export function synthesizeEmpatheticFallback(
         ],
       };
 
+    case 'BG12.15': // Healthy Boundaries & Social Peace (Neither agitating nor being agitated)
+      return {
+        title: 'Calm Boundaries: Protecting Your Peace from External Agitation',
+        summary:
+          'True emotional maturity is neither projecting chaos onto others nor absorbing their emotional storms. Establish quiet, compassionate boundaries.',
+        conversationalReply:
+          `Carrying the emotional weight of other people's expectations, judgments, or comparisons is exhausting. It is natural to feel shaken when people close to you project their anxieties onto your life.\n\n` +
+          `Krishna describes the wise person as one who does not agitate the world, and whom the world cannot agitate. You do not need to fight, argue, or seek external validation to protect your self-worth. You can love others deeply while declining to let their expectations dictate how you view yourself. Stand tall in your quiet center.`,
+        whyThisRelates:
+          'The verse teaches that emotional poise means not causing agitation to others and not allowing external opinions or anxieties to disturb our inner equilibrium. For your situation, it invites you to hold steady boundaries: respecting family while firmly detaching your self-worth from their comparisons.',
+        reflectionPrompt:
+          'What is one boundary you can gently uphold today to stop absorbing other people’s emotional turbulence?',
+        steps: [
+          'Remind yourself: "Their comparison reflects their own anxiety, not my worth."',
+          'Step away from conversations that turn into toxic or unhelpful comparisons.',
+          'Focus on your own sincere effort and ethical growth with quiet dignity.',
+        ],
+      };
+
     case 'BG2.63': // Anger & Losing Reason
       return {
         title: 'Stepping Back from the Destructive Fire of Anger',
@@ -597,7 +747,7 @@ CRITICAL INTELLECTUAL HONESTY & CONVERSATIONAL GUIDELINES:
     : `NO shloka is relevant for this query. DO NOT force any Gita verse or Sanskrit quotes. Set "whyThisRelates" to null.
    CRITICAL GUIDANCE DECOUPLING RULE:
    Even though no shloka is attached, the user has presented a real dilemma or query. DO NOT return a generic greeting, do not welcome them as if it's turn 0, and do not ask what is on their mind—they have already shared their question.
-   Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. career confusion, familial expectations, technical frustration, household tension), offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
+   Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. comparison and parental expectations, feeling not good enough, self-worth and boundaries, relationship conflict, career confusion, grief, stress, technical frustration, household tension), addressing their emotions (${input.detectedEmotion}), topic (${(input.topics || []).join(', ')}), and psychological needs (${(input.needs || []).join(', ')}). Offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
 }
 5. "reflectionPrompt": A single, thought-provoking reflective question.
 6. "steps": Exactly 3 actionable, low-friction next steps for today.

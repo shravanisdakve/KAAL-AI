@@ -4,13 +4,290 @@ import {
   SituationVisual,
 } from '../types/guidance.ts';
 
-interface VisualGeneratorParams {
+export interface VisualDecisionInput {
   question: string;
   category: GuidanceCategory;
   detectedEmotion?: string;
+  intent?: string;
+  topics?: string[];
+  needs?: string[];
+  isShlokaRelevant: boolean;
+}
+
+export interface VisualDecisionResult {
+  show: boolean;
+  reason: string;
+  confidence?: number;
+}
+
+export interface VisualGeneratorParams {
+  question: string;
+  category: GuidanceCategory;
+  detectedEmotion?: string;
+  intent?: string;
+  topics?: string[];
+  needs?: string[];
   shloka?: GitaShloka | null;
   isShlokaRelevant: boolean;
   seedOverride?: number;
+}
+
+/**
+ * Deterministically decides whether the user's situation genuinely benefits from
+ * a metaphorical, contemplative visual scene.
+ *
+ * Visuals are intentionally reserved for situations that benefit from metaphorical
+ * visual grounding (crossroads, stillness, bridges, sacred rivers, quiet anchors).
+ * Simple factual, technical, coding, or casual queries return show: false.
+ */
+export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDecisionResult {
+  const { question, category, intent, topics = [], needs = [] } = input;
+  const qLower = question.toLowerCase().trim();
+
+  // ---------------------------------------------------------
+  // 1. REJECTION GATES (Negative Filters)
+  // Technical faults, trivia, code, greetings, and chores do NOT get visuals.
+  // ---------------------------------------------------------
+
+  // A. Casual greetings and shallow chit-chat
+  const isGreeting =
+    /^(hi|hello|hey|greetings|namaste|good morning|good evening|good afternoon|howdy|what's up|sup)(\s*[!.,?]*$|\s+there|\s+kaal|\s+ai)/i.test(qLower) ||
+    ['hi', 'hello', 'hey', 'greetings', 'namaste', 'good morning', 'good evening', 'how are you', 'how are you?'].includes(qLower);
+  if (isGreeting) {
+    return {
+      show: false,
+      reason: 'Casual greetings and chit-chat do not require a situational visual',
+      confidence: 1.0,
+    };
+  }
+
+  // B. Factual trivia, encyclopedic or meta definition questions
+  const triviaPatterns = [
+    /^what\s+(is|was|are|were)\s+the\s+capital\s+of/i,
+    /^what\s+is\s+the\s+population\s+of/i,
+    /^who\s+(is|was|wrote|founded|created|discovered|invented)/i,
+    /^when\s+(did|was|is)/i,
+    /^where\s+(is|are|was|were)\s+located/i,
+    /^how\s+many\s+(days|hours|states|countries|planets|people)/i,
+    /^(define|what is the definition of)\s+/i,
+  ];
+  if (triviaPatterns.some((pattern) => pattern.test(qLower))) {
+    return {
+      show: false,
+      reason: 'Factual or trivia queries do not benefit from a contemplative visual',
+      confidence: 0.98,
+    };
+  }
+
+  // C. Technical hardware / IT / device troubleshooting
+  // Even if user expresses emotion (e.g. "laptop won't turn on and I'm stressed"),
+  // the core situation is an IT hardware fault, not a philosophical dilemma.
+  const techKeywords = [
+    'laptop', 'computer', 'macbook', 'pc', 'desktop', 'monitor', 'screen flickering',
+    'wont turn on', "won't turn on", 'not turning on', 'boot loop', 'blue screen',
+    'wifi', 'wi-fi', 'internet connection', 'router', 'bluetooth', 'charger',
+    'battery drain', 'printer', 'hard drive', 'reboot', 'restarting',
+  ];
+  if (techKeywords.some((term) => qLower.includes(term))) {
+    return {
+      show: false,
+      reason: 'Technical hardware and device troubleshooting does not benefit from a metaphorical visual',
+      confidence: 0.95,
+    };
+  }
+
+  // D. Programming, coding syntax, algorithms
+  const codingKeywords = [
+    'recursion', 'javascript', 'typescript', 'python', 'react hook', 'sql query',
+    'regex', 'syntax error', 'compile error', 'git push', 'css flexbox', 'binary search',
+    'explain recursion', 'how to code', 'write a function',
+  ];
+  if (codingKeywords.some((term) => qLower.includes(term))) {
+    return {
+      show: false,
+      reason: 'Coding and technical programming questions do not benefit from a contemplative visual',
+      confidence: 0.95,
+    };
+  }
+
+  // E. Mundane domestic chores and basic physical how-to
+  const choreKeywords = [
+    'how to boil', 'boil an egg', 'how to clean', 'roommate dirty dishes', 'dishwasher',
+    'laundry', 'clean the floor', 'fix a leaky faucet',
+  ];
+  if (choreKeywords.some((term) => qLower.includes(term))) {
+    return {
+      show: false,
+      reason: 'Mundane domestic tasks and chores do not benefit from a contemplative visual',
+      confidence: 0.9,
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 2. ACCEPTANCE GATES (Meaningful Life Situations)
+  // ---------------------------------------------------------
+
+  // A. Career uncertainty / Life direction / Decision dilemma / Crossroads
+  const isCareerLifeDirection =
+    intent === 'life_direction' ||
+    intent === 'career_choice' ||
+    intent === 'decision_making' ||
+    category === 'Clarity' ||
+    topics.some((t) => ['career', 'life_direction', 'decision', 'crossroads', 'external_expectations'].includes(t)) ||
+    qLower.includes('career') ||
+    qLower.includes('which path') ||
+    qLower.includes('career path') ||
+    qLower.includes('parents want me to') ||
+    qLower.includes('parents expect') ||
+    qLower.includes('pursue design') ||
+    qLower.includes('what to do with my life') ||
+    (qLower.includes('confus') && (qLower.includes('path') || qLower.includes('choose') || qLower.includes('decision') || qLower.includes('future')));
+  if (isCareerLifeDirection) {
+    return {
+      show: true,
+      reason: 'Career and life-direction dilemmas benefit from contemplative path and clarity visualization',
+      confidence: 0.95,
+    };
+  }
+
+  // B. Comparison, self-worth, external expectations, feeling not enough
+  const isComparisonSelfWorth =
+    topics.some((t) => ['comparison', 'self_worth', 'external_expectations', 'boundaries'].includes(t)) ||
+    needs.some((n) => ['self_worth', 'internal_validation', 'healthy_boundaries'].includes(n)) ||
+    qLower.includes('comparing me') ||
+    qLower.includes('compare me') ||
+    qLower.includes('never enough') ||
+    qLower.includes('not enough') ||
+    qLower.includes('cousins') ||
+    qLower.includes('measure up') ||
+    qLower.includes('feel inadequate') ||
+    qLower.includes('self-worth') ||
+    qLower.includes('insecurity');
+  if (isComparisonSelfWorth) {
+    return {
+      show: true,
+      reason: 'Comparison and self-worth challenges benefit from grounding inner-perspective visualization',
+      confidence: 0.95,
+    };
+  }
+
+  // C. Relationship conflict / Interpersonal friction / Arguments / Reconciliation
+  const isRelationshipConflict =
+    intent === 'relationship_conflict' ||
+    category === 'Relationships' ||
+    topics.some((t) => ['relationship_conflict', 'communication', 'reconciliation', 'empathy'].includes(t)) ||
+    qLower.includes('argument') ||
+    qLower.includes('fight') ||
+    qLower.includes('partner') ||
+    qLower.includes('spouse') ||
+    qLower.includes('husband') ||
+    qLower.includes('wife') ||
+    qLower.includes('relationship');
+  if (isRelationshipConflict) {
+    return {
+      show: true,
+      reason: 'Relationship and interpersonal conflict benefits from compassionate connection and bridge visualization',
+      confidence: 0.92,
+    };
+  }
+
+  // D. Overwhelm, burnout, chronic stress, racing mind, results anxiety
+  const isOverwhelmStress =
+    intent === 'overwhelm_burnout' ||
+    intent === 'anxiety_results' ||
+    category === 'Stress' ||
+    topics.some((t) => ['overwhelm', 'burnout', 'stress', 'results_anxiety', 'calm_mind'].includes(t)) ||
+    qLower.includes('overwhelm') ||
+    qLower.includes('burnout') ||
+    qLower.includes('deadlines') ||
+    qLower.includes('switch my mind off') ||
+    qLower.includes("can't switch my mind off") ||
+    qLower.includes('cant switch my mind off') ||
+    qLower.includes('anxiety') ||
+    qLower.includes('mind keeps overthinking') ||
+    qLower.includes('anxious') ||
+    qLower.includes('pressure');
+  if (isOverwhelmStress) {
+    return {
+      show: true,
+      reason: 'Overwhelm and acute stress benefit from calming stillness and tranquil water visualization',
+      confidence: 0.92,
+    };
+  }
+
+  // E. Grief, bereavement, loss of a loved one, mourning
+  const isGriefLoss =
+    intent === 'grief_loss' ||
+    topics.some((t) => ['grief', 'loss', 'impermanence', 'death'].includes(t)) ||
+    qLower.includes('passed away') ||
+    qLower.includes('lost someone') ||
+    qLower.includes('grief') ||
+    qLower.includes('mourning') ||
+    qLower.includes('death');
+  if (isGriefLoss) {
+    return {
+      show: true,
+      reason: 'Grief and loss dilemmas benefit from respectful, subdued transcendental river visualization',
+      confidence: 0.96,
+    };
+  }
+
+  // F. Discipline, procrastination, steady momentum
+  const isDiscipline =
+    category === 'Discipline' ||
+    intent === 'procrastination_action' ||
+    topics.some((t) => ['procrastination', 'discipline', 'habits'].includes(t)) ||
+    qLower.includes('procrastin') ||
+    qLower.includes('discipline') ||
+    qLower.includes('routine') ||
+    qLower.includes('lazy');
+  if (isDiscipline) {
+    return {
+      show: true,
+      reason: 'Procrastination and habit formation benefit from steady upward momentum visualization',
+      confidence: 0.9,
+    };
+  }
+
+  // G. Meditation, mindfulness, stillness
+  const isMeditation =
+    category === 'Meditation' ||
+    topics.some((t) => ['meditation', 'mindfulness', 'stillness'].includes(t)) ||
+    qLower.includes('meditat') ||
+    qLower.includes('stillness') ||
+    qLower.includes('mindfulness');
+  if (isMeditation) {
+    return {
+      show: true,
+      reason: 'Meditation and mindfulness practices benefit from balanced zen stone stillness visualization',
+      confidence: 0.9,
+    };
+  }
+
+  // H. Purpose, meaning, existential inquiry
+  const isPurpose =
+    category === 'Purpose' ||
+    intent === 'purpose_meaning' ||
+    topics.some((t) => ['purpose', 'meaning', 'svadharma'].includes(t)) ||
+    qLower.includes('purpose') ||
+    qLower.includes('meaning') ||
+    qLower.includes('working hard but');
+  if (isPurpose) {
+    return {
+      show: true,
+      reason: 'Purpose and existential dilemmas benefit from expansive mountain horizon visualization',
+      confidence: 0.9,
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 3. Fallback: Default to NO visual if no reflective dilemma
+  // ---------------------------------------------------------
+  return {
+    show: false,
+    reason: 'Query does not present a reflective dilemma that benefits from metaphorical visual reinforcement',
+    confidence: 0.8,
+  };
 }
 
 // Simple deterministic string hash to generate consistent procedural variations
@@ -29,7 +306,7 @@ function hashString(str: string): number {
  * exact emotional dilemma, question, and philosophical guidance.
  */
 export function generateSituationVisual(params: VisualGeneratorParams): SituationVisual {
-  const { question, category, detectedEmotion, shloka, isShlokaRelevant, seedOverride } = params;
+  const { question, category, detectedEmotion, intent, topics = [], needs = [], shloka, isShlokaRelevant, seedOverride } = params;
   const qLower = question.toLowerCase();
   const seed = seedOverride ?? hashString(question);
 
@@ -64,101 +341,14 @@ export function generateSituationVisual(params: VisualGeneratorParams): Situatio
     hasStones: false,
   };
 
-  // Case 1: Life path confusion / Decision dilemma (e.g. BG 3.35, Svadharma)
+  // Case 1: Grief / Death / Bereavement (e.g. BG 2.20, Na Jayate Mriyate Va)
   if (
-    category === 'Clarity' ||
-    qLower.includes('path') ||
-    qLower.includes('direction') ||
-    qLower.includes('confus') ||
-    qLower.includes('decision')
-  ) {
-    theme = 'crossroad-dawn';
-    title = 'Illuminating Your Own Path';
-    mood = 'Clarity & Self-Discovery';
-    prompt =
-      'A serene dawn crossroad in an ancient mist-covered valley, a solitary seeker illuminated by soft golden sunlight breaking through clouds, meditative aesthetic, warm sage and amber colors, spiritual clarity.';
-    altText =
-      'A winding morning path through quiet mist with gentle sunbeams breaking through, symbolizing clarity and choosing one’s own path.';
-    palette = {
-      skyTop: '#1e2a38',
-      skyBottom: '#fed7aa',
-      mountainFar: '#385068',
-      mountainNear: '#1c2d3d',
-      ground: '#131e29',
-      accentGlow: 'rgba(253, 186, 116, 0.45)',
-      sunGlow: '#f59e0b',
-      waterReflection: undefined,
-    };
-    elements.sunPosition = 'rising';
-    elements.hasPath = true;
-    elements.hasSunRays = true;
-    elements.hasMist = true;
-  }
-  // Case 2: Purpose / Meaning / Working hard without purpose (e.g. Svadharma)
-  else if (
-    category === 'Purpose' ||
-    qLower.includes('purpose') ||
-    qLower.includes('meaning') ||
-    qLower.includes('working hard') ||
-    qLower.includes('career')
-  ) {
-    theme = 'mountain-horizon';
-    title = 'Vast Horizons of Purpose';
-    mood = 'Quiet Devotion & Meaning';
-    prompt =
-      'Vast open golden horizon viewed from an alpine mountain ridge at sunrise, endless serene valleys beneath clearing clouds, purposeful journey, warm terracotta and glowing gold atmosphere.';
-    altText =
-      'A panoramic mountain summit opening to a golden horizon at dawn, reflecting deep inner purpose and unhurried progress.';
-    palette = {
-      skyTop: '#2b1b3d',
-      skyBottom: '#fed7aa',
-      mountainFar: '#4c2e58',
-      mountainNear: '#23142e',
-      ground: '#130a1c',
-      accentGlow: 'rgba(251, 146, 60, 0.4)',
-      sunGlow: '#f97316',
-      waterReflection: undefined,
-    };
-    elements.sunPosition = 'center';
-    elements.hasMountains = true;
-    elements.hasSunRays = true;
-  }
-  // Case 3: Stress / Overwhelm / Results anxiety (e.g. BG 2.47, Karmanye Vadhikaraste)
-  else if (
-    category === 'Stress' ||
-    qLower.includes('overwhelm') ||
-    qLower.includes('stress') ||
-    qLower.includes('anxiety') ||
-    qLower.includes('anxious') ||
-    qLower.includes('pressure')
-  ) {
-    theme = 'still-lake';
-    title = 'Stillness of the Mountain Waters';
-    mood = 'Deep Calming Equilibrium';
-    prompt =
-      'A tranquil mirror-still mountain lake at dusk, deep emerald pine reflections, gentle ripples fading into quiet stillness, peaceful twilight sky, deep soothing tranquility.';
-    altText =
-      'A serene mountain lake at dusk with mirror-like water and calm reflections, inviting you to release future outcomes and rest in the present.';
-    palette = {
-      skyTop: '#0f2922',
-      skyBottom: '#99f6e4',
-      mountainFar: '#134e4a',
-      mountainNear: '#042f2e',
-      ground: '#021c1b',
-      accentGlow: 'rgba(45, 212, 191, 0.35)',
-      sunGlow: '#5eead4',
-      waterReflection: 'rgba(94, 234, 212, 0.25)',
-    };
-    elements.sunPosition = 'dusk';
-    elements.hasWater = true;
-    elements.hasSunRays = false;
-    elements.hasMist = true;
-  }
-  // Case 4: Grief / Death / Bereavement (e.g. BG 2.20, Na Jayate Mriyate Va)
-  else if (
+    intent === 'grief_loss' ||
+    topics.includes('grief') ||
     qLower.includes('death') ||
     qLower.includes('grief') ||
     qLower.includes('lost someone') ||
+    qLower.includes('passed away') ||
     qLower.includes('mourning') ||
     (shloka && shloka.id === 'BG2.20')
   ) {
@@ -184,14 +374,93 @@ export function generateSituationVisual(params: VisualGeneratorParams): Situatio
     elements.hasLotus = true;
     elements.hasSunRays = true;
   }
-  // Case 5: Relationships / Conflict / Anger (e.g. BG 12.13, Adveshta Sarva-bhutanam)
+  // Case 2: Comparison / Self-Doubt / External Expectations (e.g. parents comparing to cousins)
   else if (
+    topics.includes('comparison') ||
+    topics.includes('self_worth') ||
+    needs.includes('self_worth') ||
+    needs.includes('internal_validation') ||
+    qLower.includes('comparing me') ||
+    qLower.includes('compare me') ||
+    qLower.includes('never enough') ||
+    qLower.includes('not enough') ||
+    qLower.includes('cousin') ||
+    qLower.includes('measure up') ||
+    qLower.includes('inadequate') ||
+    qLower.includes('self-worth')
+  ) {
+    theme = 'quiet-anchor';
+    title = 'Anchoring in Your Own Worth';
+    mood = 'Self-Trust & Perspective';
+    prompt =
+      'A solitary quiet mountain peak rising gracefully above a soft morning sea of clouds, bathed in warm gentle sunlight, steady grounded presence, release of external comparison, peaceful inner dignity.';
+    altText =
+      'A solitary mountain peak rising steadily above gentle morning clouds in warm dawn light, reflecting self-trust, emotional boundaries, and grounding in your own innate worth.';
+    palette = {
+      skyTop: '#1e2038',
+      skyBottom: '#fed7aa',
+      mountainFar: '#393c68',
+      mountainNear: '#212340',
+      ground: '#121324',
+      accentGlow: 'rgba(251, 191, 36, 0.45)',
+      sunGlow: '#fbbf24',
+      waterReflection: undefined,
+    };
+    elements.sunPosition = 'rising';
+    elements.hasMountains = true;
+    elements.hasSunRays = true;
+    elements.hasMist = true;
+  }
+  // Case 3: Life path confusion / Decision dilemma / Career uncertainty (e.g. BG 3.35, Svadharma)
+  else if (
+    intent === 'life_direction' ||
+    intent === 'career_choice' ||
+    intent === 'decision_making' ||
+    category === 'Clarity' ||
+    topics.includes('career') ||
+    topics.includes('life_direction') ||
+    qLower.includes('path') ||
+    qLower.includes('direction') ||
+    qLower.includes('confus') ||
+    qLower.includes('decision') ||
+    qLower.includes('career') ||
+    (shloka && shloka.id === 'BG3.35')
+  ) {
+    theme = 'crossroad-dawn';
+    title = 'Illuminating Your Own Path';
+    mood = 'Clarity & Self-Discovery';
+    prompt =
+      'A serene dawn crossroad in an ancient mist-covered valley, a solitary seeker illuminated by soft golden sunlight breaking through clouds, meditative aesthetic, warm sage and amber colors, spiritual clarity.';
+    altText =
+      'A winding morning path through quiet mist with gentle sunbeams breaking through, symbolizing clarity and choosing one’s own path.';
+    palette = {
+      skyTop: '#1e2a38',
+      skyBottom: '#fed7aa',
+      mountainFar: '#385068',
+      mountainNear: '#1c2d3d',
+      ground: '#131e29',
+      accentGlow: 'rgba(253, 186, 116, 0.45)',
+      sunGlow: '#f59e0b',
+      waterReflection: undefined,
+    };
+    elements.sunPosition = 'rising';
+    elements.hasPath = true;
+    elements.hasSunRays = true;
+    elements.hasMist = true;
+  }
+  // Case 4: Relationships / Interpersonal Conflict / Arguments (e.g. BG 12.13, BG 12.15)
+  else if (
+    intent === 'relationship_conflict' ||
+    topics.includes('relationship_conflict') ||
     category === 'Relationships' ||
     qLower.includes('relationship') ||
     qLower.includes('conflict') ||
     qLower.includes('argument') ||
     qLower.includes('anger') ||
-    qLower.includes('fight')
+    qLower.includes('fight') ||
+    qLower.includes('partner') ||
+    qLower.includes('spouse') ||
+    (shloka && (shloka.id === 'BG12.13' || shloka.id === 'BG12.15'))
   ) {
     theme = 'lantern-bridge';
     title = 'Warmth Across the Water';
@@ -214,6 +483,72 @@ export function generateSituationVisual(params: VisualGeneratorParams): Situatio
     elements.hasWater = true;
     elements.hasLanterns = true;
     elements.hasStars = true;
+  }
+  // Case 5: Stress / Overwhelm / Results anxiety (e.g. BG 2.47, Karmanye Vadhikaraste)
+  else if (
+    intent === 'overwhelm_burnout' ||
+    intent === 'anxiety_results' ||
+    topics.includes('overwhelm') ||
+    category === 'Stress' ||
+    qLower.includes('overwhelm') ||
+    qLower.includes('stress') ||
+    qLower.includes('anxiety') ||
+    qLower.includes('anxious') ||
+    qLower.includes('pressure') ||
+    qLower.includes('burnout') ||
+    (shloka && shloka.id === 'BG2.47')
+  ) {
+    theme = 'still-lake';
+    title = 'Stillness of the Mountain Waters';
+    mood = 'Deep Calming Equilibrium';
+    prompt =
+      'A tranquil mirror-still mountain lake at dusk, deep emerald pine reflections, gentle ripples fading into quiet stillness, peaceful twilight sky, deep soothing tranquility.';
+    altText =
+      'A serene mountain lake at dusk with mirror-like water and calm reflections, inviting you to release future outcomes and rest in the present.';
+    palette = {
+      skyTop: '#0f2922',
+      skyBottom: '#99f6e4',
+      mountainFar: '#134e4a',
+      mountainNear: '#042f2e',
+      ground: '#021c1b',
+      accentGlow: 'rgba(45, 212, 191, 0.35)',
+      sunGlow: '#5eead4',
+      waterReflection: 'rgba(94, 234, 212, 0.25)',
+    };
+    elements.sunPosition = 'dusk';
+    elements.hasWater = true;
+    elements.hasSunRays = false;
+    elements.hasMist = true;
+  }
+  // Case 6: Purpose / Meaning / Svadharma
+  else if (
+    category === 'Purpose' ||
+    intent === 'purpose_meaning' ||
+    topics.includes('purpose') ||
+    qLower.includes('purpose') ||
+    qLower.includes('meaning') ||
+    qLower.includes('working hard')
+  ) {
+    theme = 'mountain-horizon';
+    title = 'Vast Horizons of Purpose';
+    mood = 'Quiet Devotion & Meaning';
+    prompt =
+      'Vast open golden horizon viewed from an alpine mountain ridge at sunrise, endless serene valleys beneath clearing clouds, purposeful journey, warm terracotta and glowing gold atmosphere.';
+    altText =
+      'A panoramic mountain summit opening to a golden horizon at dawn, reflecting deep inner purpose and unhurried progress.';
+    palette = {
+      skyTop: '#2b1b3d',
+      skyBottom: '#fed7aa',
+      mountainFar: '#4c2e58',
+      mountainNear: '#23142e',
+      ground: '#130a1c',
+      accentGlow: 'rgba(251, 146, 60, 0.4)',
+      sunGlow: '#f97316',
+      waterReflection: undefined,
+    };
+    elements.sunPosition = 'center';
+    elements.hasMountains = true;
+    elements.hasSunRays = true;
   }
   // Case 6: Discipline / Procrastination (e.g. BG 3.8, Niyatam Kuru Karma Tvam)
   else if (

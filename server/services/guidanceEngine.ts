@@ -9,7 +9,10 @@ import {
   generateConversationalGuidance,
   synthesizeEmpatheticFallback,
 } from './conversationalEngine.ts';
-import { generateSituationVisual } from './visualGenerator.ts';
+import {
+  generateSituationVisual,
+  shouldShowSituationVisual,
+} from './visualGenerator.ts';
 
 interface KeywordRule {
   term: string;
@@ -68,12 +71,18 @@ const CATEGORY_SIGNALS: Record<GuidanceCategory, KeywordRule[]> = {
   Relationships: [
     { term: 'relationship', weight: 4 },
     { term: 'relationships', weight: 4 },
+    { term: 'spouse', weight: 4 },
+    { term: 'partner', weight: 3 },
+    { term: 'fight', weight: 3 },
+    { term: 'argument', weight: 3 },
+    { term: 'conflict', weight: 3 },
+    { term: 'family', weight: 2 },
+    { term: 'parents', weight: 3 },
+    { term: 'parent', weight: 3 },
+    { term: 'marriage', weight: 3 },
+    { term: 'friend', weight: 2 },
     { term: 'problem', weight: 2 },
     { term: 'problems', weight: 3 },
-    { term: 'partner', weight: 3 },
-    { term: 'friend', weight: 2 },
-    { term: 'family', weight: 2 },
-    { term: 'conflict', weight: 3 },
     { term: 'expectation', weight: 3 },
     { term: 'expectations', weight: 3 },
     { term: 'anger', weight: 3 },
@@ -706,14 +715,29 @@ export async function runGuidanceEngine(
     title: stepsToUse[idx] || step.title,
   }));
 
-  // 4. Generate bespoke situation visual on the fly for this exact question and emotional state
-  const situationVisual = generateSituationVisual({
+  // 4. Determine whether situation genuinely benefits from a contemplative visual
+  const visualDecision = shouldShowSituationVisual({
     question,
     category: resolvedCategory,
     detectedEmotion: ragResult.detectedEmotion,
-    shloka: ragResult.shloka,
+    intent: ragResult.nlpUnderstanding.intent,
+    topics: ragResult.nlpUnderstanding.topics,
+    needs: ragResult.nlpUnderstanding.needs,
     isShlokaRelevant: ragResult.isShlokaRelevant,
   });
+
+  const situationVisual = visualDecision.show
+    ? generateSituationVisual({
+        question,
+        category: resolvedCategory,
+        detectedEmotion: ragResult.detectedEmotion,
+        intent: ragResult.nlpUnderstanding.intent,
+        topics: ragResult.nlpUnderstanding.topics,
+        needs: ragResult.nlpUnderstanding.needs,
+        shloka: ragResult.shloka,
+        isShlokaRelevant: ragResult.isShlokaRelevant,
+      })
+    : null;
 
   const structuredResponse: StructuredGuidanceResponse = {
     title: conversational.title || generated.title,
@@ -797,13 +821,28 @@ export function runGuidanceEngineSync(question: string): {
     title: stepsToUse[idx] || step.title,
   }));
 
-  const situationVisual = generateSituationVisual({
+  const visualDecision = shouldShowSituationVisual({
     question,
     category: resolvedCategory,
     detectedEmotion: ragResult.detectedEmotion,
-    shloka: ragResult.shloka,
+    intent: ragResult.nlpUnderstanding.intent,
+    topics: ragResult.nlpUnderstanding.topics,
+    needs: ragResult.nlpUnderstanding.needs,
     isShlokaRelevant: ragResult.isShlokaRelevant,
   });
+
+  const situationVisual = visualDecision.show
+    ? generateSituationVisual({
+        question,
+        category: resolvedCategory,
+        detectedEmotion: ragResult.detectedEmotion,
+        intent: ragResult.nlpUnderstanding.intent,
+        topics: ragResult.nlpUnderstanding.topics,
+        needs: ragResult.nlpUnderstanding.needs,
+        shloka: ragResult.shloka,
+        isShlokaRelevant: ragResult.isShlokaRelevant,
+      })
+    : null;
 
   return {
     category: resolvedCategory,

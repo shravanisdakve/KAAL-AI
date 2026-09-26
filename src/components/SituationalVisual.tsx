@@ -3,7 +3,7 @@ import { Sparkles, Maximize2, X, Info } from 'lucide-react';
 import { SituationVisual as SituationVisualType } from '../types/guidance.ts';
 
 interface SituationalVisualProps {
-  visual?: SituationVisualType;
+  visual?: SituationVisualType | null;
   category?: string;
   question?: string;
 }
@@ -13,6 +13,10 @@ export const SituationalVisual: React.FC<SituationalVisualProps> = ({
   category = 'General Reflection',
   question = 'Reflection',
 }) => {
+  if (!visual) {
+    return null;
+  }
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPromptTooltip, setShowPromptTooltip] = useState(false);
 
