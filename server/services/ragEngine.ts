@@ -225,6 +225,102 @@ function createSparseVector(weights: Partial<Record<SemanticDimension, number>>)
 }
 
 /**
+ * Reusable Intent-Priority Detectors:
+ * Technical, hardware, IT, coding, and factual tasks must take priority over
+ * broad emotional/reflective words when diagnosing user intent.
+ */
+export function isTechnicalTroubleshootingQuery(text: string): boolean {
+  const lower = text.toLowerCase();
+
+  // 1. Hardware, Device, OS, Browser, Component, and Network Tokens
+  const techEntities = [
+    'laptop', 'computer', 'macbook', 'pc', 'desktop', 'notebook', 'chromebook',
+    'phone', 'iphone', 'android', 'smartphone', 'tablet', 'ipad',
+    'monitor', 'screen', 'display', 'keyboard', 'mouse', 'trackpad',
+    'charger', 'charging', 'battery', 'power adapter', 'power cord', 'power cable',
+    'wall outlet', 'fan', 'cooling fan', 'vents', 'airflow',
+    'cpu', 'gpu', 'ram', 'memory', 'hard drive', 'ssd', 'disk', 'motherboard', 'hardware',
+    'router', 'modem', 'wifi', 'wi-fi', 'internet', 'bluetooth', 'network', 'hotspot', 'ethernet',
+    'chrome', 'browser', 'safari', 'firefox', 'edge', 'windows', 'macos', 'mac os',
+    'linux', 'ios', 'app', 'application', 'task manager', 'activity monitor'
+  ];
+
+  // 2. Technical Faults, Malfunctions, Symptoms & Error States
+  const techFaults = [
+    'overheating', 'overheat', 'overheats', 'heating up', 'too hot',
+    'shutting down', 'shut down', 'shuts down', 'randomly shuts',
+    'wont turn on', "won't turn on", 'not turning on', 'does not turn on', 'fails to turn on',
+    'wont boot', "won't boot", 'not booting', 'boot loop', 'stuck on boot',
+    'blue screen', 'bsod', 'black screen', 'blank screen',
+    'crash', 'crashed', 'crashing', 'crashes',
+    'frozen', 'freezing', 'freeze', 'unresponsive', 'hung',
+    'wont charge', "won't charge", 'not charging', 'stopped charging', 'charging slowly',
+    'disconnecting', 'disconnects', 'disconnected', 'dropping connection', 'keeps dropping',
+    'stopped working', 'not working', 'wont work', "won't work",
+    'high cpu', 'all my ram', 'using all my ram', 'out of memory', 'memory leak',
+    'battery drain', 'draining battery', 'flickering', 'screen flickering'
+  ];
+
+  // 3. Technical Diagnostic Phrasings
+  const troubleshootingPhrases = [
+    'what should i check', 'what to check first', 'how to fix', 'how to troubleshoot',
+    'how do i fix', 'how can i fix', 'troubleshoot', 'diagnostic', 'troubleshooting',
+    'why is it overheating', 'why is my laptop', 'why does my laptop'
+  ];
+
+  const hasEntity = techEntities.some((entity) => lower.includes(entity));
+  const hasFault = techFaults.some((fault) => lower.includes(fault));
+
+  // A. A tech entity paired with a technical fault
+  if (hasEntity && hasFault) {
+    return true;
+  }
+
+  // B. A tech entity paired with a troubleshooting question
+  if (hasEntity && troubleshootingPhrases.some((phrase) => lower.includes(phrase))) {
+    return true;
+  }
+
+  // C. Standalone unambiguous fault phrases
+  const standaloneFaults = [
+    'overheating and shutting down', 'wont turn on', "won't turn on",
+    'boot loop', 'blue screen of death', 'bsod', 'wifi is down',
+    'wi-fi is down', 'router keeps disconnecting', 'chrome is using all my ram',
+    'my screen is flickering', 'phone won\'t charge', 'phone wont charge'
+  ];
+  if (standaloneFaults.some((sf) => lower.includes(sf))) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isCodingTechnicalQuery(text: string): boolean {
+  const lower = text.toLowerCase();
+  const codingKeywords = [
+    'recursion', 'javascript', 'typescript', 'python', 'react hook', 'sql query',
+    'regex', 'syntax error', 'compile error', 'git push', 'css flexbox', 'binary search',
+    'explain recursion', 'how to code', 'write a function', 'debug this code',
+    'algorithm', 'data structure', 'pointer', 'async await', 'promise', 'nullpointerexception'
+  ];
+  return codingKeywords.some((term) => lower.includes(term));
+}
+
+export function isFactualTriviaQuery(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  const triviaPatterns = [
+    /^what\s+(is|was|are|were)\s+the\s+capital\s+of/i,
+    /^what\s+is\s+the\s+population\s+of/i,
+    /^who\s+(is|was|wrote|founded|created|discovered|invented)/i,
+    /^when\s+(did|was|is)/i,
+    /^where\s+(is|are|was|were)\s+located/i,
+    /^how\s+many\s+(days|hours|states|countries|planets|people)/i,
+    /^(define|what is the definition of)\s+/i,
+  ];
+  return triviaPatterns.some((pattern) => pattern.test(lower));
+}
+
+/**
  * LAYER 1: NLP Understanding & Linguistic Signal Inference
  * Infers emotional context, intent, topics, and psychological needs from linguistic cues.
  * Note: Emotions are inferred linguistic signals to guide conversational warmth,
@@ -238,7 +334,7 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
   const topics: string[] = [];
   const needs: string[] = [];
 
-  // A. Emotion Extraction
+  // A. Emotion Extraction (Linguistic cues for tone empathy)
   if (lower.includes('confused') || lower.includes('uncertain') || lower.includes('not sure') || lower.includes('lost') || lower.includes('torn')) {
     emotions.push('confusion', 'uncertainty');
   }
@@ -250,6 +346,12 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
   }
   if (lower.includes('fight') || lower.includes('argument') || lower.includes('angry') || lower.includes('rage') || lower.includes('furious') || lower.includes('resentful') || lower.includes('hate') || lower.includes('regret')) {
     emotions.push('anger', 'resentment');
+  }
+  if (lower.includes('frustrat')) {
+    emotions.push('frustration');
+  }
+  if (lower.includes('stress') || lower.includes('anxious') || lower.includes('worried') || lower.includes('pressure')) {
+    emotions.push('stress', 'anxiety');
   }
   if (lower.includes('procrastinat') || lower.includes('lazy') || lower.includes('delay') || lower.includes('cannot start') || lower.includes("can't start") || lower.includes('sluggish') || lower.includes('unmotivated')) {
     emotions.push('procrastination', 'inertia');
@@ -267,123 +369,148 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
     emotions.push('reflective');
   }
 
-  // B. Intent & Topic Extraction
-  const isLifeDirection =
-    lower.includes('which path') ||
-    lower.includes('path in life') ||
-    lower.includes('path i should') ||
-    lower.includes('confused about which') ||
-    lower.includes('direction in life') ||
-    lower.includes('what should i do with my life') ||
-    lower.includes('career') ||
-    lower.includes('career crossroads') ||
-    lower.includes('choose between') ||
-    lower.includes('choice between') ||
-    lower.includes('choosing between') ||
-    (lower.includes('parents want') && (lower.includes('become') || lower.includes('career') || lower.includes('path') || lower.includes('pursue') || lower.includes('doctor') || lower.includes('engineer'))) ||
-    (lower.includes('family want') && (lower.includes('become') || lower.includes('career') || lower.includes('path') || lower.includes('pursue'))) ||
-    (lower.includes('doctor') && lower.includes('design')) ||
-    (lower.includes('medicine') && lower.includes('design')) ||
-    lower.includes('vocation') ||
-    lower.includes('profession');
+  // B. Intent & Topic Extraction with Strict Priority Hierarchy
+  // 1. OBJECTIVE & PRACTICAL DOMAINS (Highest Priority: Technical, Coding, Factual, Casual Greeting)
+  // Technical, hardware, network, coding, or factual tasks take precedence over emotional tokens.
+  if (isTechnicalTroubleshootingQuery(query)) {
+    intent = 'technical_troubleshooting';
+    topics.push('technical_troubleshooting', 'hardware_diagnostics', 'system_recovery', 'practical_troubleshooting');
+    needs.push('step_by_step_troubleshooting', 'root_cause_isolation', 'practical_recovery');
+  } else if (isCodingTechnicalQuery(query)) {
+    intent = 'coding_technical';
+    topics.push('programming', 'software_development', 'code_syntax');
+    needs.push('code_explanation', 'technical_clarity');
+  } else if (isFactualTriviaQuery(query)) {
+    intent = 'factual_inquiry';
+    topics.push('factual_knowledge', 'trivia');
+    needs.push('direct_answer');
+  } else if (
+    /^(hi|hello|hey|greetings|namaste|good morning|good evening|good afternoon|howdy|what's up|sup)(\s*[!.,?]*$|\s+there|\s+kaal|\s+ai)/i.test(query.trim()) ||
+    CASUAL_GREETINGS.has(query.trim().toLowerCase().replace(/[?!.,]/g, ''))
+  ) {
+    intent = 'casual_greeting';
+    topics.push('greeting', 'welcoming');
+    needs.push('warmth', 'invitation');
+  }
+  // 2. EXISTENTIAL & LIFE DILEMMAS (Evaluated only when NOT an objective practical task)
+  else {
+    const isLifeDirection =
+      lower.includes('which path') ||
+      lower.includes('path in life') ||
+      lower.includes('path i should') ||
+      lower.includes('confused about which') ||
+      lower.includes('direction in life') ||
+      lower.includes('what should i do with my life') ||
+      lower.includes('career') ||
+      lower.includes('career crossroads') ||
+      lower.includes('choose between') ||
+      lower.includes('choice between') ||
+      lower.includes('choosing between') ||
+      (lower.includes('parents want') && (lower.includes('become') || lower.includes('career') || lower.includes('path') || lower.includes('pursue') || lower.includes('doctor') || lower.includes('engineer'))) ||
+      (lower.includes('family want') && (lower.includes('become') || lower.includes('career') || lower.includes('path') || lower.includes('pursue'))) ||
+      (lower.includes('doctor') && lower.includes('design')) ||
+      (lower.includes('medicine') && lower.includes('design')) ||
+      lower.includes('vocation') ||
+      lower.includes('profession');
 
-  const isComparisonOrExpectations =
-    lower.includes('compar') ||
-    lower.includes('cousin') ||
-    lower.includes('wasting my potential') ||
-    lower.includes('not good enough') ||
-    lower.includes('carrying their expectations') ||
-    lower.includes('stop carrying') ||
-    lower.includes('measuring up') ||
-    lower.includes('measure up') ||
-    lower.includes('self-worth') ||
-    lower.includes('self worth') ||
-    lower.includes('parental expectation') ||
-    lower.includes('external expectation') ||
-    (lower.includes('parent') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar') || lower.includes('potential'))) ||
-    (lower.includes('family') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar')));
+    const isComparisonOrExpectations =
+      lower.includes('compar') ||
+      lower.includes('cousin') ||
+      lower.includes('wasting my potential') ||
+      lower.includes('not good enough') ||
+      lower.includes('carrying their expectations') ||
+      lower.includes('stop carrying') ||
+      lower.includes('measuring up') ||
+      lower.includes('measure up') ||
+      lower.includes('self-worth') ||
+      lower.includes('self worth') ||
+      lower.includes('parental expectation') ||
+      lower.includes('external expectation') ||
+      (lower.includes('parent') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar') || lower.includes('potential'))) ||
+      (lower.includes('family') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar')));
 
-  const isRelationshipGeneral =
-    lower.includes('fight') ||
-    lower.includes('argument') ||
-    lower.includes('spouse') ||
-    lower.includes('partner') ||
-    lower.includes('relationship') ||
-    lower.includes('in-law');
+    const isRelationshipGeneral =
+      lower.includes('fight') ||
+      lower.includes('argument') ||
+      lower.includes('spouse') ||
+      lower.includes('partner') ||
+      lower.includes('relationship') ||
+      lower.includes('in-law');
 
-  if (isLifeDirection) {
-    intent = 'life_direction';
-    topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
-    needs.push('clarity', 'authentic_direction', 'decision_support', 'boundary_setting');
-  } else if (isComparisonOrExpectations) {
-    intent = 'relationship_conflict';
-    topics.push(
-      'relationship_conflict',
-      'external_expectations',
-      'comparison',
-      'self_worth',
-      'boundaries',
-      'parental_expectations'
-    );
-    needs.push(
-      'self_worth',
-      'healthy_boundaries',
-      'emotional_separation',
-      'internal_validation'
-    );
-  } else if (isRelationshipGeneral) {
-    intent = 'relationship_harmony';
-    topics.push('relationships', 'forgiveness', 'compassion', 'communication');
-    needs.push('softening_defensiveness', 'reconciliation', 'peace');
-  } else if (
-    lower.includes('purpose') ||
-    lower.includes('working hard but') ||
-    lower.includes('meaning') ||
-    lower.includes('calling') ||
-    lower.includes('empty')
-  ) {
-    intent = 'purpose_discovery';
-    topics.push('purpose', 'svadharma', 'calling', 'authenticity');
-    needs.push('meaning', 'direction', 'non_comparison');
-  } else if (
-    lower.includes('overwhelm') ||
-    lower.includes('stress') ||
-    lower.includes('pressure') ||
-    lower.includes('burnout')
-  ) {
-    intent = 'stress_relief';
-    topics.push('outcomes', 'workload', 'effort', 'detachment');
-    needs.push('calm', 'release_of_outcomes', 'breathing_room');
-  } else if (
-    lower.includes('passed away') ||
-    lower.includes('death') ||
-    lower.includes('grief') ||
-    lower.includes('loss')
-  ) {
-    intent = 'grief_processing';
-    topics.push('bereavement', 'eternal_soul', 'impermanence');
-    needs.push('gentle_comfort', 'reverence', 'acceptance');
-  } else if (
-    lower.includes('procrastinat') ||
-    lower.includes('routine') ||
-    lower.includes('habit') ||
-    lower.includes('lazy')
-  ) {
-    intent = 'habit_discipline';
-    topics.push('discipline', 'action', 'momentum', 'habits');
-    needs.push('micro_step', 'breaking_inertia', 'focus');
-  } else if (
-    lower.includes('meditat') ||
-    lower.includes('stillness') ||
-    lower.includes('calm my mind') ||
-    lower.includes('overthinking')
-  ) {
-    intent = 'mindfulness_stillness';
-    topics.push('meditation', 'abhyasa', 'inner_peace', 'stillness');
-    needs.push('breath', 'patience_with_mind', 'quietness');
-  } else {
-    topics.push('general_reflection');
-    needs.push('perspective', 'clarity');
+    if (isLifeDirection) {
+      intent = 'life_direction';
+      topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
+      needs.push('clarity', 'authentic_direction', 'decision_support', 'boundary_setting');
+    } else if (isComparisonOrExpectations) {
+      intent = 'relationship_conflict';
+      topics.push(
+        'relationship_conflict',
+        'external_expectations',
+        'comparison',
+        'self_worth',
+        'boundaries',
+        'parental_expectations'
+      );
+      needs.push(
+        'self_worth',
+        'healthy_boundaries',
+        'emotional_separation',
+        'internal_validation'
+      );
+    } else if (isRelationshipGeneral) {
+      intent = 'relationship_harmony';
+      topics.push('relationships', 'forgiveness', 'compassion', 'communication');
+      needs.push('softening_defensiveness', 'reconciliation', 'peace');
+    } else if (
+      lower.includes('purpose') ||
+      lower.includes('working hard but') ||
+      lower.includes('meaning') ||
+      lower.includes('calling') ||
+      lower.includes('empty')
+    ) {
+      intent = 'purpose_discovery';
+      topics.push('purpose', 'svadharma', 'calling', 'authenticity');
+      needs.push('meaning', 'direction', 'non_comparison');
+    } else if (
+      lower.includes('overwhelm') ||
+      lower.includes('stress') ||
+      lower.includes('pressure') ||
+      lower.includes('burnout')
+    ) {
+      intent = 'stress_relief';
+      topics.push('outcomes', 'workload', 'effort', 'detachment');
+      needs.push('calm', 'release_of_outcomes', 'breathing_room');
+    } else if (
+      lower.includes('passed away') ||
+      lower.includes('death') ||
+      lower.includes('grief') ||
+      lower.includes('loss')
+    ) {
+      intent = 'grief_processing';
+      topics.push('bereavement', 'eternal_soul', 'impermanence');
+      needs.push('gentle_comfort', 'reverence', 'acceptance');
+    } else if (
+      lower.includes('procrastinat') ||
+      lower.includes('routine') ||
+      lower.includes('habit') ||
+      lower.includes('lazy')
+    ) {
+      intent = 'habit_discipline';
+      topics.push('discipline', 'action', 'momentum', 'habits');
+      needs.push('micro_step', 'breaking_inertia', 'focus');
+    } else if (
+      lower.includes('meditat') ||
+      lower.includes('stillness') ||
+      lower.includes('calm my mind') ||
+      lower.includes('overthinking')
+    ) {
+      intent = 'mindfulness_stillness';
+      topics.push('meditation', 'abhyasa', 'inner_peace', 'stillness');
+      needs.push('breath', 'patience_with_mind', 'quietness');
+    } else {
+      topics.push('general_reflection');
+      needs.push('perspective', 'clarity');
+    }
   }
 
   return { emotions, intent, topics, needs };
@@ -506,6 +633,14 @@ function computeLexicalScore(queryTokens: string[], shloka: GitaShloka): number 
  * Determines whether a query is purely casual, meta, or factual trivia (no shloka needed)
  */
 export function isCasualOrNonSpiritualQuery(query: string): boolean {
+  if (
+    isTechnicalTroubleshootingQuery(query) ||
+    isCodingTechnicalQuery(query) ||
+    isFactualTriviaQuery(query)
+  ) {
+    return true;
+  }
+
   const trimmed = query.trim().toLowerCase().replace(/[?!.,]/g, '');
 
   if (CASUAL_GREETINGS.has(trimmed)) return true;

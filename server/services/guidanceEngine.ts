@@ -4,7 +4,13 @@ import {
   StructuredGuidanceResponse,
   TacticalStep,
 } from '../types/guidance.ts';
-import { retrieveGitaShlokaRAG, retrieveGitaShlokaRAGSync } from './ragEngine.ts';
+import {
+  retrieveGitaShlokaRAG,
+  retrieveGitaShlokaRAGSync,
+  isTechnicalTroubleshootingQuery,
+  isCodingTechnicalQuery,
+  isFactualTriviaQuery,
+} from './ragEngine.ts';
 import {
   generateConversationalGuidance,
   synthesizeEmpatheticFallback,
@@ -646,6 +652,97 @@ export function selectPattern(
 }
 
 /**
+ * Generates appropriate tactical framework steps based on domain intent
+ */
+function getFrameworkSteps(
+  patternGenerated: { steps: string[]; frameworkSteps: TacticalStep[] },
+  stepsToUse: string[],
+  isTechnical: boolean,
+  isCoding: boolean
+): TacticalStep[] {
+  if (isTechnical) {
+    return [
+      {
+        id: 1,
+        title: stepsToUse[0] || 'Physical & Environmental Triage',
+        status: 'Active Focus',
+        description:
+          'Inspect cooling vents, ensure proper ventilation, clear dust buildup, and verify power connections.',
+        checklist: [
+          'Ensure cooling vents and fans are unobstructed',
+          'Inspect power brick, charging cables, and connections',
+        ],
+      },
+      {
+        id: 2,
+        title: stepsToUse[1] || 'Process & Resource Isolation',
+        status: 'Pending',
+        description:
+          'Open Task Manager or Activity Monitor to identify rogue processes or extensions spiking CPU or RAM usage.',
+        checklist: [
+          'Review high CPU/RAM processes in Task Manager or Activity Monitor',
+          'Disable heavy background apps or browser extensions',
+        ],
+      },
+      {
+        id: 3,
+        title: stepsToUse[2] || 'System Reset & Controlled Recovery',
+        status: 'Pending',
+        description:
+          'Allow thermal cooldown if the system overheated, then reboot and test stability in clean state.',
+        checklist: [
+          'Allow thermal cooldown before powering back on',
+          'Relaunch applications incrementally to verify stability',
+        ],
+      },
+    ];
+  }
+
+  if (isCoding) {
+    return [
+      {
+        id: 1,
+        title: stepsToUse[0] || 'Define Base Case & Constraints',
+        status: 'Active Focus',
+        description:
+          'Identify the termination condition that halts execution and prevents infinite loops or stack overflow errors.',
+        checklist: [
+          'Specify the base case return value',
+          'Verify boundary conditions (null, zero, negative)',
+        ],
+      },
+      {
+        id: 2,
+        title: stepsToUse[1] || 'Trace State and Call Stack',
+        status: 'Pending',
+        description:
+          'Step through the execution flow manually on paper or in a debugger with a minimal input case.',
+        checklist: [
+          'Trace call stack for n = 2 or n = 3',
+          'Confirm state values returned at each unwinding step',
+        ],
+      },
+      {
+        id: 3,
+        title: stepsToUse[2] || 'Test Edge Cases & Complexity',
+        status: 'Pending',
+        description:
+          'Validate time and space complexity, ensuring memory limits are respected.',
+        checklist: [
+          'Test with extreme or empty input values',
+          'Assess space complexity on the call stack',
+        ],
+      },
+    ];
+  }
+
+  return patternGenerated.frameworkSteps.map((step, idx) => ({
+    ...step,
+    title: stepsToUse[idx] || step.title,
+  }));
+}
+
+/**
  * Primary Guidance Engine entry point with RAG Shloka Retrieval & Conversational Synthesis.
  * Incorporates Bhagavad Gita RAG retrieval with conditional relevance filtering and high-EQ conversational dialogue.
  */
@@ -669,6 +766,21 @@ export async function runGuidanceEngine(
 
   // 1. Run Bhagavad Gita RAG Retrieval Pipeline
   const ragResult = await retrieveGitaShlokaRAG(question);
+
+  // Technical troubleshooting, coding, and factual queries must NEVER be categorized under spiritual Stress/Fear categories
+  const isTechnical =
+    ragResult.nlpUnderstanding.intent === 'technical_troubleshooting' ||
+    isTechnicalTroubleshootingQuery(question);
+  const isCoding =
+    ragResult.nlpUnderstanding.intent === 'coding_technical' ||
+    isCodingTechnicalQuery(question);
+  const isFactual =
+    ragResult.nlpUnderstanding.intent === 'factual_inquiry' ||
+    isFactualTriviaQuery(question);
+
+  if (isTechnical || isCoding || isFactual) {
+    resolvedCategory = 'General Reflection';
+  }
 
   // Extract previous conversation turns if continuing a dialogue
   const conversationHistory =
@@ -710,10 +822,12 @@ export async function runGuidanceEngine(
       ? conversational.steps
       : generated.steps;
 
-  const frameworkStepsToUse: TacticalStep[] = generated.frameworkSteps.map((step, idx) => ({
-    ...step,
-    title: stepsToUse[idx] || step.title,
-  }));
+  const frameworkStepsToUse: TacticalStep[] = getFrameworkSteps(
+    generated,
+    stepsToUse,
+    isTechnical,
+    isCoding
+  );
 
   // 4. Determine whether situation genuinely benefits from a contemplative visual
   const visualDecision = shouldShowSituationVisual({
@@ -758,6 +872,10 @@ export async function runGuidanceEngine(
       pattern:
         ragResult.isShlokaRelevant && ragResult.shloka
           ? `${ragResult.shloka.id}: ${ragResult.shloka.chapterName}`
+          : isTechnical
+          ? 'Technical Diagnostic Troubleshooting'
+          : isCoding
+          ? 'Technical Programming & Concept Clarification'
           : pattern.name,
       score: topCategory.score,
       matchedKeywords: topCategory.matchedKeywords,
@@ -797,6 +915,21 @@ export function runGuidanceEngineSync(question: string): {
   }
 
   const ragResult = retrieveGitaShlokaRAGSync(question);
+
+  const isTechnical =
+    ragResult.nlpUnderstanding.intent === 'technical_troubleshooting' ||
+    isTechnicalTroubleshootingQuery(question);
+  const isCoding =
+    ragResult.nlpUnderstanding.intent === 'coding_technical' ||
+    isCodingTechnicalQuery(question);
+  const isFactual =
+    ragResult.nlpUnderstanding.intent === 'factual_inquiry' ||
+    isFactualTriviaQuery(question);
+
+  if (isTechnical || isCoding || isFactual) {
+    resolvedCategory = 'General Reflection';
+  }
+
   const conversational = synthesizeEmpatheticFallback({
     question,
     category: resolvedCategory,
@@ -816,10 +949,12 @@ export function runGuidanceEngineSync(question: string): {
       ? conversational.steps
       : generated.steps;
 
-  const frameworkStepsToUse: TacticalStep[] = generated.frameworkSteps.map((step, idx) => ({
-    ...step,
-    title: stepsToUse[idx] || step.title,
-  }));
+  const frameworkStepsToUse: TacticalStep[] = getFrameworkSteps(
+    generated,
+    stepsToUse,
+    isTechnical,
+    isCoding
+  );
 
   const visualDecision = shouldShowSituationVisual({
     question,
@@ -865,6 +1000,10 @@ export function runGuidanceEngineSync(question: string): {
         pattern:
           ragResult.isShlokaRelevant && ragResult.shloka
             ? `${ragResult.shloka.id}: ${ragResult.shloka.chapterName}`
+            : isTechnical
+            ? 'Technical Diagnostic Troubleshooting'
+            : isCoding
+            ? 'Technical Programming & Concept Clarification'
             : pattern.name,
         score: topCategory.score,
         matchedKeywords: topCategory.matchedKeywords,

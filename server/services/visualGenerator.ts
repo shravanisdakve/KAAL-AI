@@ -3,6 +3,11 @@ import {
   GitaShloka,
   SituationVisual,
 } from '../types/guidance.ts';
+import {
+  isTechnicalTroubleshootingQuery,
+  isCodingTechnicalQuery,
+  isFactualTriviaQuery,
+} from './ragEngine.ts';
 
 export interface VisualDecisionInput {
   question: string;
@@ -45,12 +50,49 @@ export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDec
   const qLower = question.toLowerCase().trim();
 
   // ---------------------------------------------------------
-  // 1. REJECTION GATES (Negative Filters)
-  // Technical faults, trivia, code, greetings, and chores do NOT get visuals.
+  // 1. REJECTION GATES (Negative Filters - Highest Priority)
+  // Technical hardware/network troubleshooting, coding, trivia, and greetings NEVER get visuals.
   // ---------------------------------------------------------
 
-  // A. Casual greetings and shallow chit-chat
+  // A. Technical troubleshooting / IT / hardware / network / software failures
+  if (
+    intent === 'technical_troubleshooting' ||
+    isTechnicalTroubleshootingQuery(question)
+  ) {
+    return {
+      show: false,
+      reason: 'Technical hardware, IT, software, or network troubleshooting does not benefit from a metaphorical visual',
+      confidence: 1.0,
+    };
+  }
+
+  // B. Programming, coding syntax, algorithms
+  if (
+    intent === 'coding_technical' ||
+    isCodingTechnicalQuery(question)
+  ) {
+    return {
+      show: false,
+      reason: 'Coding and technical programming questions do not benefit from a contemplative visual',
+      confidence: 1.0,
+    };
+  }
+
+  // C. Factual trivia, encyclopedic or definition queries
+  if (
+    intent === 'factual_inquiry' ||
+    isFactualTriviaQuery(question)
+  ) {
+    return {
+      show: false,
+      reason: 'Factual or trivia queries do not benefit from a contemplative visual',
+      confidence: 1.0,
+    };
+  }
+
+  // D. Casual greetings and shallow chit-chat
   const isGreeting =
+    intent === 'casual_greeting' ||
     /^(hi|hello|hey|greetings|namaste|good morning|good evening|good afternoon|howdy|what's up|sup)(\s*[!.,?]*$|\s+there|\s+kaal|\s+ai)/i.test(qLower) ||
     ['hi', 'hello', 'hey', 'greetings', 'namaste', 'good morning', 'good evening', 'how are you', 'how are you?'].includes(qLower);
   if (isGreeting) {
@@ -58,55 +100,6 @@ export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDec
       show: false,
       reason: 'Casual greetings and chit-chat do not require a situational visual',
       confidence: 1.0,
-    };
-  }
-
-  // B. Factual trivia, encyclopedic or meta definition questions
-  const triviaPatterns = [
-    /^what\s+(is|was|are|were)\s+the\s+capital\s+of/i,
-    /^what\s+is\s+the\s+population\s+of/i,
-    /^who\s+(is|was|wrote|founded|created|discovered|invented)/i,
-    /^when\s+(did|was|is)/i,
-    /^where\s+(is|are|was|were)\s+located/i,
-    /^how\s+many\s+(days|hours|states|countries|planets|people)/i,
-    /^(define|what is the definition of)\s+/i,
-  ];
-  if (triviaPatterns.some((pattern) => pattern.test(qLower))) {
-    return {
-      show: false,
-      reason: 'Factual or trivia queries do not benefit from a contemplative visual',
-      confidence: 0.98,
-    };
-  }
-
-  // C. Technical hardware / IT / device troubleshooting
-  // Even if user expresses emotion (e.g. "laptop won't turn on and I'm stressed"),
-  // the core situation is an IT hardware fault, not a philosophical dilemma.
-  const techKeywords = [
-    'laptop', 'computer', 'macbook', 'pc', 'desktop', 'monitor', 'screen flickering',
-    'wont turn on', "won't turn on", 'not turning on', 'boot loop', 'blue screen',
-    'wifi', 'wi-fi', 'internet connection', 'router', 'bluetooth', 'charger',
-    'battery drain', 'printer', 'hard drive', 'reboot', 'restarting',
-  ];
-  if (techKeywords.some((term) => qLower.includes(term))) {
-    return {
-      show: false,
-      reason: 'Technical hardware and device troubleshooting does not benefit from a metaphorical visual',
-      confidence: 0.95,
-    };
-  }
-
-  // D. Programming, coding syntax, algorithms
-  const codingKeywords = [
-    'recursion', 'javascript', 'typescript', 'python', 'react hook', 'sql query',
-    'regex', 'syntax error', 'compile error', 'git push', 'css flexbox', 'binary search',
-    'explain recursion', 'how to code', 'write a function',
-  ];
-  if (codingKeywords.some((term) => qLower.includes(term))) {
-    return {
-      show: false,
-      reason: 'Coding and technical programming questions do not benefit from a contemplative visual',
-      confidence: 0.95,
     };
   }
 

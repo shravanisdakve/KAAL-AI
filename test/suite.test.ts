@@ -509,6 +509,90 @@ async function runTestSuite() {
     assert.strictEqual(response.situationVisual, null, 'Simple chore must return situationVisual: null');
   });
 
+  // Technical Troubleshooting Intent & Visual Gating Regressions
+  await test('Technical Troubleshooting: laptop overheating and shutting down with Chrome', async () => {
+    const query =
+      'My laptop is overheating and shutting down whenever I open Chrome. What should I check first?';
+    const { category, response } = await runGuidanceEngine(query);
+
+    assert.strictEqual(
+      response.meta?.nlpAnalysis?.intent,
+      'technical_troubleshooting',
+      'Intent must be technical_troubleshooting'
+    );
+    assert.strictEqual(category, 'General Reflection', 'Category must resolve to General Reflection');
+    assert.strictEqual(response.isShlokaRelevant, false, 'No Gita shloka should be relevant');
+    assert.strictEqual(response.shloka, null, 'Shloka must be null');
+    assert.strictEqual(response.situationVisual, null, 'Situation visual must be null for IT troubleshooting');
+    assert.strictEqual(response.whyThisRelates, undefined, 'whyThisRelates must be undefined');
+
+    // Conversational text must provide practical IT troubleshooting
+    const reply = response.conversationalReply.toLowerCase();
+    assert.ok(
+      reply.includes('airflow') ||
+        reply.includes('vent') ||
+        reply.includes('chrome') ||
+        reply.includes('task manager') ||
+        reply.includes('activity monitor'),
+      'Reply must contain practical hardware/browser diagnostic advice'
+    );
+
+    // Framework steps must be practical technical triage, not spiritual observation
+    assert.ok(response.frameworkSteps.length > 0);
+    assert.ok(
+      response.frameworkSteps[0].description.toLowerCase().includes('vent') ||
+        response.frameworkSteps[0].description.toLowerCase().includes('power') ||
+        response.frameworkSteps[0].description.toLowerCase().includes('cool')
+    );
+    assert.ok(!response.frameworkSteps[0].description.toLowerCase().includes('observe your thoughts'));
+  });
+
+  await test('Technical Troubleshooting: Wi-Fi stopped working with emotional word (stressed)', async () => {
+    const query = "My Wi-Fi stopped working and I'm stressed.";
+    const { category, response } = await runGuidanceEngine(query);
+
+    assert.strictEqual(response.meta?.nlpAnalysis?.intent, 'technical_troubleshooting');
+    assert.strictEqual(category, 'General Reflection');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.situationVisual, null);
+    assert.ok(response.conversationalReply.toLowerCase().includes('router') || response.conversationalReply.toLowerCase().includes('device'));
+  });
+
+  await test('Technical Troubleshooting: phone won\'t charge with emotional word (frustrated)', async () => {
+    const query = "My phone won't charge and I'm frustrated.";
+    const { category, response } = await runGuidanceEngine(query);
+
+    assert.strictEqual(response.meta?.nlpAnalysis?.intent, 'technical_troubleshooting');
+    assert.strictEqual(category, 'General Reflection');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.situationVisual, null);
+    assert.ok(response.conversationalReply.toLowerCase().includes('outlet') || response.conversationalReply.toLowerCase().includes('cable') || response.conversationalReply.toLowerCase().includes('charge'));
+  });
+
+  await test('Technical Troubleshooting: router keeps disconnecting with emotional word (anxious)', async () => {
+    const query = "My router keeps disconnecting and I'm anxious.";
+    const { category, response } = await runGuidanceEngine(query);
+
+    assert.strictEqual(response.meta?.nlpAnalysis?.intent, 'technical_troubleshooting');
+    assert.strictEqual(category, 'General Reflection');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.situationVisual, null);
+  });
+
+  await test('Technical Troubleshooting: Chrome using all RAM', async () => {
+    const query = 'Chrome is using all my RAM, what should I do?';
+    const { category, response } = await runGuidanceEngine(query);
+
+    assert.strictEqual(response.meta?.nlpAnalysis?.intent, 'technical_troubleshooting');
+    assert.strictEqual(category, 'General Reflection');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.situationVisual, null);
+  });
+
   await test('Multi-Turn Conversation: appends dialogue turns to the same session', async () => {
     const q1 = 'What should I do about feeling lost?';
     const { category, response: r1 } = await runGuidanceEngine(q1);

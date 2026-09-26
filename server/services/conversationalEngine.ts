@@ -1,5 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { GuidanceCategory, GitaShloka } from '../types/guidance.ts';
+import {
+  isTechnicalTroubleshootingQuery,
+  isCodingTechnicalQuery,
+  isFactualTriviaQuery,
+} from './ragEngine.ts';
 
 export interface ConversationalSynthesisInput {
   question: string;
@@ -87,12 +92,17 @@ export function synthesizeEmpatheticFallback(
     const qLower = question.toLowerCase();
 
     // 1A. Direct Factual Inquiry (No spiritual framing)
-    if (qLower.includes('capital of france') || qLower.includes('capital of')) {
+    if (intent === 'factual_inquiry' || isFactualTriviaQuery(question) || qLower.includes('capital of france') || qLower.includes('capital of')) {
+      const qClean = qLower.trim();
+      let answer = 'This is a factual question.';
+      if (qClean.includes('capital of france')) {
+        answer = 'The capital of France is Paris.';
+      }
       return {
         title: 'Factual Inquiry',
         summary: 'Direct response to your factual question.',
         conversationalReply:
-          'The capital of France is Paris. If there is a deeper thought, decision, or personal question you are reflecting on today, feel free to share.',
+          `${answer} If there is a deeper thought, decision, or personal question you are reflecting on today, feel free to share.`,
         reflectionPrompt: 'What is a personal question or decision on your mind today?',
         steps: [
           'Notice if your mind is seeking quick facts or deeper reflection.',
@@ -102,7 +112,126 @@ export function synthesizeEmpatheticFallback(
       };
     }
 
-    // 1B. Household & Roommate Friction
+    // 1B. Technical Troubleshooting & Hardware / Device / Network Failures
+    // Priority rule: practical diagnostics over spiritual or emotional prose
+    if (intent === 'technical_troubleshooting' || isTechnicalTroubleshootingQuery(question)) {
+      // Sub-case 1: Overheating / CPU / Chrome / Memory / Unexpected shutdowns
+      if (
+        qLower.includes('overheat') ||
+        qLower.includes('shutting down') ||
+        qLower.includes('shut down') ||
+        qLower.includes('shuts down') ||
+        qLower.includes('fan') ||
+        qLower.includes('chrome') ||
+        qLower.includes('ram') ||
+        qLower.includes('cpu') ||
+        qLower.includes('memory')
+      ) {
+        return {
+          title: 'Troubleshooting Laptop Overheating and Shutdowns',
+          summary:
+            'When a laptop overheats and shuts down during browser or app usage, emergency thermal cutoffs are protecting the CPU. Address cooling and software resource spikes methodically.',
+          conversationalReply:
+            'When your laptop overheats and suddenly shuts down upon opening Chrome or running demanding applications, the system is almost certainly hitting an emergency thermal cutoff to prevent permanent hardware damage.\n\n' +
+            'Start by inspecting the physical environment: ensure the laptop is resting on a hard, flat surface rather than a bed or blanket, and check that the cooling intake and exhaust vents are not choked with dust. Next, examine software resource hogs: Chrome tabs and extensions can trigger massive CPU and memory spikes. Open your system’s Task Manager (Windows) or Activity Monitor (Mac) before launching Chrome, disable heavy browser extensions or hardware acceleration, and let the laptop cool down completely for 15 minutes before testing again.',
+          reflectionPrompt:
+            'Is the device placed on a flat surface with unobstructed airflow, and does the fan run loudly before shutting down?',
+          steps: [
+            'Place the laptop on a hard, flat surface and clear any dust or lint from the cooling vents.',
+            'Open Task Manager or Activity Monitor to identify if specific Chrome tabs, extensions, or background processes spike CPU/memory to 100%.',
+            'Allow the laptop to cool down completely for 15 minutes, then test launching Chrome in Guest mode or with extensions disabled.',
+          ],
+        };
+      }
+
+      // Sub-case 2: Wi-Fi / Router / Internet / Network disconnections
+      if (
+        qLower.includes('wifi') ||
+        qLower.includes('wi-fi') ||
+        qLower.includes('router') ||
+        qLower.includes('internet') ||
+        qLower.includes('network') ||
+        qLower.includes('disconnect')
+      ) {
+        return {
+          title: 'Methodical Wi-Fi and Network Troubleshooting',
+          summary:
+            'Network interruptions disrupt work momentum. Isolate the failure between your machine, your local router, and your internet provider.',
+          conversationalReply:
+            'Losing internet connectivity unexpectedly creates immediate stress, especially when you have ongoing work or deadlines. Rather than clicking random settings, isolate where the signal breakdown is occurring.\n\n' +
+            'First, check whether other devices (like your phone) can connect and browse on the same Wi-Fi network. If other devices work, the issue is local to your computer—toggle Wi-Fi off and on, forget the network, or flush your network cache. If all devices are disconnected, perform a 30-second power cycle on your modem and router.',
+          reflectionPrompt:
+            'Can any other device in your space access the internet through this same router?',
+          steps: [
+            'Test internet access on another device (like your phone) to isolate whether the issue is the laptop or the router.',
+            'Power cycle your modem and router: unplug the power cables, wait 30 seconds, and plug them back in.',
+            'Toggle your computer’s Wi-Fi off and on, or run the operating system network diagnostic to renew your IP address.',
+          ],
+        };
+      }
+
+      // Sub-case 3: Phone / Battery / Charging / Won't turn on
+      if (
+        qLower.includes('charge') ||
+        qLower.includes('charging') ||
+        qLower.includes('battery') ||
+        qLower.includes('phone') ||
+        qLower.includes('turn on') ||
+        qLower.includes('boot')
+      ) {
+        return {
+          title: 'Troubleshooting Device Power and Charging Failures',
+          summary:
+            'When a device refuses to charge or power up, systematically eliminate accessories, ports, and power sources before suspecting battery failure.',
+          conversationalReply:
+            'It is genuinely frustrating when a daily device refuses to charge or boot, especially when you depend on it. Sudden charging or power failures typically stem from a faulty cable, a clogged charging port, or an internal power management loop.\n\n' +
+            'Start with the simplest physical checks: test a different wall outlet, inspect the charging port for pocket lint or debris, and try an alternate charging cable and power brick. If the device remains completely dark, perform a hard hardware reset by holding down the power button for 20-30 seconds.',
+          reflectionPrompt:
+            'Have you tested with a completely different wall outlet and charging cable?',
+          steps: [
+            'Check power sources, charger cables, and test with a verified wall outlet.',
+            'Perform a hard reset by holding down the power button for 20-30 seconds to clear residual capacitance.',
+            'Leave the device connected to a known working charger for 20 minutes before attempting to power it on.',
+          ],
+        };
+      }
+
+      // Sub-case 4: General Hardware / IT Troubleshooting Fallback
+      return {
+        title: 'Systematic Hardware & IT Troubleshooting',
+        summary:
+          'Technical malfunctions are best resolved through calm, step-by-step diagnostic isolation.',
+        conversationalReply:
+          'Technical breakdowns bring unexpected urgency, but panic will not fix a machine. Methodical diagnosis resolves technical faults much faster than random trial and error.\n\n' +
+          'Step back and isolate what changed right before the malfunction started. Check physical connections, inspect system resources in Task Manager or Activity Monitor, and restart the device in a clean state to eliminate software conflicts.',
+        reflectionPrompt:
+          'Did this issue begin following a recent update, software installation, or physical movement of the device?',
+        steps: [
+          'Save your work, close background applications, and perform a full clean system reboot.',
+          'Open Task Manager or Activity Monitor to inspect CPU, memory, and disk utilization.',
+          'Verify all physical cables, connections, and power sources for proper seating and integrity.',
+        ],
+      };
+    }
+
+    // 1C. Technical Coding & Programming Questions
+    if (intent === 'coding_technical' || isCodingTechnicalQuery(question)) {
+      return {
+        title: 'Technical Programming & Concept Clarification',
+        summary: 'Direct technical explanation for your programming question.',
+        conversationalReply:
+          'In programming, complex problems become manageable when broken down into deterministic steps.\n\n' +
+          'If you are exploring recursion, remember that every recursive function requires two core components: a base case (which halts recursion and prevents a stack overflow) and a recursive case (which breaks down the input and calls the function with a smaller subproblem). Trace the execution stack step by step on paper with a small input to visualize how values return.',
+        reflectionPrompt: 'What is the base case condition that prevents infinite execution in your implementation?',
+        steps: [
+          'Define the explicit base case condition to prevent infinite loops or stack overflow errors.',
+          'Trace the function call stack on paper with a small sample input (e.g. n = 3).',
+          'Test edge cases, including empty inputs, 0, or negative numbers.',
+        ],
+      };
+    }
+
+    // 1D. Household & Roommate Friction
     if (qLower.includes('dirty dishes') || qLower.includes('roommate')) {
       return {
         title: 'Navigating Household Friction with Clarity',
@@ -116,23 +245,6 @@ export function synthesizeEmpatheticFallback(
           'Wait until you feel unagitated before bringing up the topic.',
           'Use "I" statements to share how the shared space impacts your focus.',
           'Agree on one simple mutual standard for the sink.',
-        ],
-      };
-    }
-
-    // 1C. Technical / Practical Issues
-    if (qLower.includes('laptop') && (qLower.includes('turn on') || qLower.includes('broken') || qLower.includes('stress'))) {
-      return {
-        title: 'Troubleshooting with Calm Presence',
-        summary: 'Technical failures trigger unexpected urgency. Approach the problem methodically, step by step.',
-        conversationalReply:
-          'It is genuinely frustrating when an essential tool stops working right when you need it. The sudden spike of stress is natural, but panicking will not fix the machine.\n\n' +
-          'Take a breath and step through the physical basics methodically: test a different power outlet, verify the charger cable, hold the power button down for 20 seconds to perform a hard reset, and check if the battery indicator shows any life. If hardware has failed, focus on what tasks you can adapt to or who can assist with repairs.',
-        reflectionPrompt: 'Can you pause for one minute to reset your nervous system before troubleshooting?',
-        steps: [
-          'Check power sources, charger cables, and test a different wall outlet.',
-          'Perform a 20-second hard reset by holding down the power button.',
-          'Identify any alternative device or backup plan for urgent tasks today.',
         ],
       };
     }
@@ -747,7 +859,17 @@ CRITICAL INTELLECTUAL HONESTY & CONVERSATIONAL GUIDELINES:
     : `NO shloka is relevant for this query. DO NOT force any Gita verse or Sanskrit quotes. Set "whyThisRelates" to null.
    CRITICAL GUIDANCE DECOUPLING RULE:
    Even though no shloka is attached, the user has presented a real dilemma or query. DO NOT return a generic greeting, do not welcome them as if it's turn 0, and do not ask what is on their mind—they have already shared their question.
-   Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. comparison and parental expectations, feeling not good enough, self-worth and boundaries, relationship conflict, career confusion, grief, stress, technical frustration, household tension), addressing their emotions (${input.detectedEmotion}), topic (${(input.topics || []).join(', ')}), and psychological needs (${(input.needs || []).join(', ')}). Offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
+   ${
+     input.intent === 'technical_troubleshooting' || isTechnicalTroubleshootingQuery(input.question)
+       ? `CRITICAL TECHNICAL / PRACTICAL RULE:
+   The user's query is a technical hardware, IT, network, or software troubleshooting problem (e.g. laptop overheating, Wi-Fi failing, phone not charging, app crashing).
+   DO NOT give spiritual metaphors, existential musings, or meditative framing (e.g. do NOT say "turn inward", "observe your thoughts", "contemplate stillness").
+   Provide a calm, direct, and structured technical diagnosis in "conversationalReply", a pragmatic diagnostic question about recent system/hardware changes in "reflectionPrompt", and 3 concrete technical troubleshooting steps in "steps" (e.g. inspecting airflow/vents, checking Task Manager/Activity Monitor, disabling extensions or power cycling).`
+       : input.intent === 'coding_technical' || isCodingTechnicalQuery(input.question)
+       ? `CRITICAL CODING / PROGRAMMING RULE:
+   The user is asking a programming or technical coding question. Provide a direct, clear technical explanation with code concepts (e.g. base cases, recursion, stack execution). DO NOT use spiritual metaphors.`
+       : `Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. comparison and parental expectations, feeling not good enough, self-worth and boundaries, relationship conflict, career confusion, grief, stress, technical frustration, household tension), addressing their emotions (${input.detectedEmotion}), topic (${(input.topics || []).join(', ')}), and psychological needs (${(input.needs || []).join(', ')}). Offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
+   }`
 }
 5. "reflectionPrompt": A single, thought-provoking reflective question.
 6. "steps": Exactly 3 actionable, low-friction next steps for today.
