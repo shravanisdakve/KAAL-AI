@@ -1,354 +1,259 @@
-# KAAL AI — Mini Guidance Assistant & Bhagavad Gita RAG Engine
+# KAAL AI — Mini Guidance Assistant
 
 [![Live Application](https://img.shields.io/badge/Live%20Demo-kaal--ai.onrender.com-10b981?style=for-the-badge&logo=render&logoColor=white)](https://kaal-ai.onrender.com/)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-shravanisdakve%2FKAAL--AI-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
-[![Tests Passing](https://img.shields.io/badge/Tests-24%2F24%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
+[![Tests Passing](https://img.shields.io/badge/Tests-29%2F29%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-> A serene, emotionally intelligent mental wellness companion inspired by the timeless wisdom of the Bhagavad Gita, powered by a **proper RAG (Retrieval-Augmented Generation) retrieval system**, selective shloka relevance gating, natural conversational dialogue, and robust dual-persistence database storage.
+**KAAL AI** is a personal guidance companion that helps users navigate confusion, stress, self-doubt, burnout, fear of failure, relationship challenges, and life decisions.
+
+Its core differentiator is a **hybrid Retrieval-Augmented Generation (RAG) pipeline for Bhagavad Gita wisdom**. Instead of attaching a verse to every response, KAAL AI retrieves and presents Gita teachings only when they are genuinely relevant to the user's situation.
 
 ---
 
 ## 🔗 Quick Links
 
-- **Live Deployed Application:** [https://kaal-ai.onrender.com/](https://kaal-ai.onrender.com/)
-- **Live Health Endpoint:** [https://kaal-ai.onrender.com/api/health](https://kaal-ai.onrender.com/api/health)
-- **GitHub Repository:** [https://github.com/shravanisdakve/KAAL-AI](https://github.com/shravanisdakve/KAAL-AI)
-- **Inspiration & Concept:** [KAAL AI Official Website](https://www.kaalai.in/)
+* **Live Deployed Application:** [https://kaal-ai.onrender.com/](https://kaal-ai.onrender.com/)
+* **Live Health Endpoint:** [https://kaal-ai.onrender.com/api/health](https://kaal-ai.onrender.com/api/health)
+* **GitHub Repository:** [https://github.com/shravanisdakve/KAAL-AI](https://github.com/shravanisdakve/KAAL-AI)
+* **Inspiration & Concept:** [KAAL AI Official Website](https://www.kaalai.in/)
 
 ---
 
-## 1. Project Overview & Concept Alignment
+## Features
 
-**KAAL AI — Mini Guidance Assistant** is a full-stack mental wellness application built for the **KAAL AI Technical Evaluation**.
-
-Aligned with KAAL AI's core mission:
-> *"Ancient wisdom, modern guidance — An AI companion inspired by the timeless wisdom of the Bhagavad Gita, helping you navigate life with clarity, compassion, and purpose."*
-
-### Key Upgrades:
-1. **Proper Bhagavad Gita RAG Pipeline:** A structured knowledge base of authentic Bhagavad Gita verses mapped to human emotional struggles (anxiety, grief, overwhelm, procrastination, anger, fear of failure, relationships, and stillness).
-2. **Selective Relevance Gating (Zero Forceful Shlokas):** The retrieval engine calculates semantic similarity and emotional resonance. A verse is retrieved **only when genuinely applicable to the user's dilemma**. Casual greetings (*"Hi"*, *"Good morning"*) or meta queries (*"What is your tech stack?"*) receive warm conversational replies **without forcing any shloka**.
-3. **Natural, Empathetic Human Dialogue:** Rather than presenting cold developer templates, the assistant listens actively, validates the user's emotions, and gently weaves the Gita's wisdom into modern daily reality (supported by Gemini with a high-EQ fallback synthesizer).
-4. **Authentic Sacred Shloka Cards:** When a verse is retrieved, users see the exact chapter and verse citation, original Sanskrit in Devanagari, romanized transliteration, English translation by renowned scholars, and practical life application.
-
----
-
-## 2. Feature Highlights
-
-### 🎨 Frontend Experience
-- **Calm, Distraction-Free Aesthetic:** Designed with soft cream/stone palettes, gentle typography (`Plus Jakarta Sans`), and subtle borders aligned with [kaalai.in](https://www.kaalai.in/).
-- **Natural Human Prose:** Conversational replies formatted into fluid, empathetic paragraphs that read like a caring mentor.
-- **Authentic Shloka Wisdom Card:** Dedicated UI card with sacred **ॐ** insignia, Chapter/Verse citation, Devanagari Sanskrit, transliteration, English translation, and a 1-click copy action.
-- **Collapsible History Sidebar:**
-  - Categorizes previous conversations chronologically into **Today**, **Yesterday**, and **Earlier**.
-  - Highlights the currently active conversation.
-  - Collapses into a minimal icon rail on desktop and transforms into a fluid slide-out drawer on mobile and tablet screens.
-  - Safe conversation management with **Single Conversation Deletion** and **Clear All History** confirmation modals.
-- **Responsive Question Composer:**
-  - Multi-line textarea with auto-resizing.
-  - `Enter` to submit, `Shift + Enter` for multi-line breaks.
-  - Integrated speech-to-text dictation (Web Speech API with graceful fallback).
-  - Client-side validation with friendly inline warning banners.
-- **Complete Loading & Error States:**
-  - Reasoning loading state with animated progress steps (*"Parsing question signals...", "Evaluating category weights...", "Retrieving relevant Gita shloka..."*).
-  - Resilient error state with an instant retry trigger.
-
-### ⚙️ Backend & RAG Architecture
-- **Curated Bhagavad Gita Corpus (`server/data/gitaDataset.ts`):** 16+ deeply curated foundational shlokas indexed by themes, emotions, and life dilemmas.
-- **Semantic RAG Retrieval Engine (`server/services/ragEngine.ts`):** Multi-factor scoring against themes, emotions, real-world situations, and translation tokens.
-- **Conditional Relevance Gating:** Evaluates threshold confidence (score ≥ 0.40) and intent. Omits shlokas for non-dilemma queries.
-- **Conversational Synthesis Engine (`server/services/conversationalEngine.ts`):** Seamless integration with Google GenAI (`gemini-2.5-flash`) when an API key is available, paired with an offline high-EQ emotional synthesizer as fallback.
-- **Centralized Error Handling:** Custom `AppError` class and global error middleware ensuring standardized JSON error formats.
-- **15 Automated Unit & Integration Tests:** 100% passing test suite (`npm test`).
-
-### 🗄️ Database & Dual-Persistence
-- **PostgreSQL Schema:** Parameterized SQL queries using connection pooling (`pg.Pool`), JSONB structured payload storage, and index on `created_at DESC`.
-- **Automatic Fallback Store:** Operates seamlessly with PostgreSQL when `DATABASE_URL` is set, or automatically falls back to an atomic local persistent file store (`.guidance_data.json`) pre-seeded with authentic questions.
+* **Conversational AI Guidance:** Empathetic, grounded prose that validates feelings and offers calm clarity.
+* **Conditional Bhagavad Gita Retrieval:** Relevant verses are surfaced only when the situation genuinely calls for spiritual/philosophical context.
+* **Hybrid Semantic + Domain-Aware RAG:** Gemini embeddings + PostgreSQL pgvector vector search paired with a 5-factor reranker.
+* **0.70 Relevance Gate:** Rejects verses below threshold to prevent forced scriptural matching for casual or non-philosophical queries.
+* **PostgreSQL Persistence:** Complete session and history storage with JSONB responses.
+* **Anonymous Session Isolation:** Lightweight client-side session ID scoping history per device without requiring login.
+* **Multi-Turn Conversational Context:** Continuous dialogue threads preserving conversational context across exchanges.
+* **Reflection Prompts & Micro-Actions:** Every guidance response includes a perspective-shifting reflection question and three practical next steps.
+* **Situational Visual Guidance:** Procedural dynamic SVG landscape visuals reflecting the mood of the seeker.
+* **Responsive Desktop & Mobile Interface:** Fluid layout tested on mobile viewports (390×844) with zero horizontal overflow.
+* **Graceful Degradation:** Deterministic fallback when embedding/vector infrastructure is offline.
 
 ---
 
-## 3. Technology Stack
+## Tech Stack
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 19, TypeScript, Tailwind CSS v4, Lucide React Icons |
-| **Backend** | Node.js, Express, TypeScript (executed via `tsx`) |
-| **RAG Knowledge Base** | Curated Bhagavad Gita Corpus (Sanskrit, Transliteration, English Translations, Emotion/Theme vectors) |
-| **AI Integration** | Google GenAI SDK (`@google/genai`) + High-EQ Offline Fallback Synthesizer |
-| **Database** | PostgreSQL (with `pg` driver, JSONB columns, indexed timestamps) + Persistent Local JSON Fallback |
-| **Testing** | Node Test Runner & Assertions (`npm test`, 15/15 tests passing) |
-| **Build & Tooling** | Vite 8, Autoprefixer, TypeScript Compiler (`tsc`) |
-| **Deployment** | Render (Production Unified Web Service) |
+### Frontend
+* React 19
+* TypeScript
+* Vite
+* Tailwind CSS
+* Lucide React
+* Motion
+
+### Backend
+* Node.js
+* Express
+* TypeScript
+* `pg` PostgreSQL client + `pgvector`
+
+### AI & Embeddings
+* Google GenAI SDK (`@google/genai`)
+* Gemini 2.5 Flash for conversational guidance generation
+* `gemini-embedding-2` with 768 output dimensions for dense query and document embeddings
+
+### Database
+* PostgreSQL
+* `pgvector` extension for cosine distance vector search (`vector(768)`)
+* JSONB columns for structured guidance payloads
+
+### Deployment
+* Render unified web service
 
 ---
 
-## 4. RAG Retrieval Architecture
+## Architecture
 
-```
-                          USER QUESTION / DILEMMA
-                                    │
-                                    ▼
-                     ┌──────────────────────────────┐
-                     │   1. Emotion & Intent Parser  │
-                     │  - Detects emotional state   │
-                     │  - Identifies dilemma/intent │
-                     │  - Determines if spiritual/  │
-                     │    philosophical context fits│
-                     └──────────────┬───────────────┘
-                                    │
-                                    ▼
-                     ┌──────────────────────────────┐
-                     │   2. RAG Retrieval Engine     │
-                     │  - Multi-vector lexical &    │
-                     │    semantic score computation│
-                     │  - Cross-references:         │
-                     │    * Query vs Verse meanings │
-                     │    * Query vs Emotions/Themes│
-                     │    * Query vs Situations     │
-                     └──────────────┬───────────────┘
-                                    │
-                                    ▼
-                     ┌──────────────────────────────┐
-                     │   3. Relevance Gate Check    │
-                     │  - Is relevance score >= 0.4?│
-                     │  - Is question meaningful?   │
-                     └──────────────┬───────────────┘
-                            /                \
-                       YES /                  \ NO
-                          /                    \
-                         ▼                      ▼
-            ┌────────────────────────┐  ┌─────────────────────────┐
-            │ Matched Shloka Selected│  │ NO Shloka Selected      │
-            │ (BG Chapter.Verse)     │  │ (Do NOT force a verse!) │
-            └───────────┬────────────┘  └───────────┬─────────────┘
-                        │                           │
-                        └─────────────┬─────────────┘
-                                      │
-                                      ▼
-                     ┌──────────────────────────────┐
-                     │ 4. Human-like Conversational │
-                     │    Synthesis (RAG Augmented) │
-                     │ - Empathic active listening  │
-                     │ - Natural conversational flow│
-                     │ - Weaves Shloka wisdom       │
-                     │   deeply into personal life  │
-                     │ - Provides warm next step    │
-                     └──────────────┬───────────────┘
-                                    │
-                                    ▼
-                     ┌──────────────────────────────┐
-                     │ 5. Structured Rich Payload   │
-                     │ - conversationalReply (text) │
-                     │ - shloka? (if relevant)      │
-                     │ - emotionDetected            │
-                     │ - keyTakeaway                │
-                     │ - practicalNextSteps         │
-                     └──────────────────────────────┘
+```text
+User
+  ↓
+React Frontend (Vite)
+  ↓
+Express API
+  ↓
+Request Validation & Session Scoping
+  ↓
+Deterministic NLP Understanding
+  ↓
+Hybrid RAG Engine
+  ↓
+Gemini Query Embedding (768d)
+  ↓
+PostgreSQL + pgvector (<=> cosine distance)
+  ↓
+Top 5 Candidate Verses
+  ↓
+Domain-Aware Composite Reranking
+  ↓
+0.70 Relevance Gate
+  ↓
+Relevant Gita Context (or null)
+  │
+  └───────────────┐
+                  ↓
+             Gemini 2.5 Flash
+                  ↓
+          Structured Guidance JSON
+                  ↓
+             PostgreSQL Persistence
+                  ↓
+             React Guidance Card UI
 ```
 
 ---
 
-## 5. Curated Bhagavad Gita Verses in RAG Corpus
+## RAG Pipeline
 
-| Verse ID | Chapter & Title | Sanskrit First Line | Core Wisdom / Life Dilemma |
-|---|---|---|---|
-| **BG 2.47** | Ch. 2: Sankhya Yoga | *कर्मण्येवाधिकारस्ते मा फलेषु कदाचन...* | **Overwhelm & Anxiety of Results:** Focus entirely on your effort, surrender anxiety of outcome. |
-| **BG 2.48** | Ch. 2: Sankhya Yoga | *योगस्थः कुरु कर्माणि सङ्गं त्यक्त्वा...* | **Equanimity (Samatvam):** Balanced inner poise through both praise and setbacks. |
-| **BG 2.14** | Ch. 2: Sankhya Yoga | *मात्रास्पर्शास्तु कौन्तेय शीतोष्ण...* | **Grief & Impermanence (Titiksha):** Pain and seasons pass; endure with patient self-compassion. |
-| **BG 2.63** | Ch. 2: Sankhya Yoga | *क्रोधाद्भवति संमोहः संमोहात्स्मृति...* | **Anger & Conflict:** Anger destroys clarity and reason; pause before reacting. |
-| **BG 3.8** | Ch. 3: Karma Yoga | *नियतं कुरु कर्म त्वं कर्म ज्यायो...* | **Procrastination & Inertia:** Action precedes motivation; start with a 2-minute micro-step. |
-| **BG 3.35** | Ch. 3: Karma Yoga | *श्रेयान्स्वधर्मो विगुणः परधर्मात्...* | **Purpose (Svadharma):** Better your own authentic path than imitating someone else's story. |
-| **BG 4.40** | Ch. 4: Jnana Yoga | *अज्ञश्चाश्रद्दधानश्च संशयात्मा...* | **Indecision & Doubts:** Overthinking feeds doubt; choose an honest path and commit forward. |
-| **BG 6.5** | Ch. 6: Dhyana Yoga | *उद्धरेदात्मनात्मानं नात्मानमवसादयेत्...* | **Self-Compassion:** Your mind can be your greatest friend or worst enemy; elevate yourself. |
-| **BG 6.35** | Ch. 6: Dhyana Yoga | *असंशयं महाबाहो मनो दुर्निग्रहं...* | **Meditation & Restless Mind:** Tame the wandering mind through gentle practice (*Abhyasa*) and detachment. |
-| **BG 6.19** | Ch. 6: Dhyana Yoga | *यथा दीपो निवातस्थो नेङ्गते...* | **Inner Stillness:** The steady mind in quiet reflection is like a flame in a windless sanctuary. |
-| **BG 12.13** | Ch. 12: Bhakti Yoga | *अद्वेष्टा सर्वभूतानां मैत्रः करुण...* | **Relationships & Forgiveness:** Release malice and defensiveness; compassion is true strength. |
-| **BG 12.15** | Ch. 12: Bhakti Yoga | *यस्मान्नोद्विजते लोको लोकान्नोद्विजते...* | **Boundaries & Social Drama:** Do not agitate others, and do not let others shake your inner peace. |
-| **BG 18.37** | Ch. 18: Moksha Yoga | *यत्तदग्रे विषमिव परिणामेऽमृतोपमम्...* | **Discipline & Delayed Gratification:** What feels bitter at first tastes like nectar in the end. |
-| **BG 18.66** | Ch. 18: Moksha Yoga | *सर्वधर्मान्परित्यज्य मामेकं शरणं...* | **Surrender & Solace:** When strength feels depleted, surrender your worries. Do not grieve. |
+The RAG system uses a two-stage retrieval process:
+
+### Stage 1 — Semantic Candidate Retrieval (Recall)
+* The user's query is converted into a 768-dimensional dense vector using `gemini-embedding-2`.
+* Gita verses are stored as **enriched wisdom documents** containing:
+  * Chapter and verse citation
+  * Sanskrit text & transliteration
+  * English translation
+  * Core wisdom & philosophical meaning
+  * Themes and concepts
+  * Real-world contexts and situations
+  * Emotional relevance
+  * Modern applications and cautions
+* These enriched documents are embedded and stored in PostgreSQL using `pgvector`.
+* The query embedding is compared against the stored vectors using cosine distance (`<=>`), retrieving the top 5 candidates.
+
+### Stage 2 — Domain-Aware Reranking (Precision)
+Semantic similarity alone does not guarantee situational appropriateness. The candidate verses are reranked using a 5-factor weighted formula:
+
+```text
+Score = 0.40(Semantic Similarity)
+      + 0.25(Intent Alignment)
+      + 0.15(Theme / Lexical Match)
+      + 0.10(Emotional Resonance)
+      + 0.10(Contextual Fit)
+```
+
+### The 0.70 Relevance Gate
+The highest-ranked candidate must cross a **0.70 relevance threshold**. 
+* If the score is $\ge 0.70$, the shloka is attached to the guidance response.
+* If below 0.70 (e.g. casual greetings or trivial questions), `shloka` is set to `null`.
+* This prevents the system from forcing spiritual content into unrelated queries.
 
 ---
 
-## 6. API Endpoints Specification
+## Graceful Degradation
 
-| Method | Endpoint | Description | Status Codes |
-|---|---|---|---|
-| `POST` | `/api/guidance` | Submits question, runs RAG shloka retrieval, generates conversational reply, saves session. | `201 Created`, `400 Bad Request` |
-| `GET` | `/api/history` | Retrieves all previous conversations sorted newest first. | `200 OK` |
-| `GET` | `/api/history/:id` | Retrieves a single guidance conversation by numeric ID. | `200 OK`, `404 Not Found`, `400 Bad Request` |
-| `DELETE` | `/api/history/:id` | Deletes a single conversation by ID. | `200 OK`, `404 Not Found`, `400 Bad Request` |
-| `DELETE` | `/api/history` | Clears all conversation history. | `200 OK` |
-| `GET` | `/api/health` | Health check endpoint returning uptime and engine status. | `200 OK` |
+The application does not depend solely on external vector infrastructure:
+* When Gemini embeddings or PostgreSQL `pgvector` are unreachable, the RAG engine seamlessly falls back to a deterministic 24-dimensional semantic-lexical retrieval path.
+* This ensures the application maintains continuous guidance availability rather than crashing when third-party services experience downtime.
 
 ---
 
-## 7. Example Request & Response
+## Data Model
 
-### Request
-```bash
-curl -X POST https://kaal-ai.onrender.com/api/guidance \
-  -H "Content-Type: application/json" \
-  -d '{"question": "I feel overwhelmed by everything happening in my life. What should I do?"}'
-```
+### `guidance_sessions`
+Stores all user guidance exchanges:
+* `id`: Serial primary key
+* `session_id`: Client-generated UUID for anonymous session scoping
+* `question`: User query string
+* `category`: Classified guidance category (`Stress`, `Clarity`, `Discipline`, `Purpose`, `Meditation`, `General Reflection`)
+* `response`: JSONB object holding full structured guidance payload
+* `created_at`: Timestamp
 
-### Response (`201 Created`)
-```json
-{
-  "id": 1,
-  "question": "I feel overwhelmed by everything happening in my life. What should I do?",
-  "category": "Stress",
-  "response": {
-    "title": "Release the Burden of Outcomes & Return to the Present Effort",
-    "summary": "Overwhelm happens when the mind tries to carry every future consequence at once. True peace comes from pouring your energy into the immediate action before you.",
-    "conversationalReply": "I can truly feel the weight of what you are describing. When life piles on multiple expectations all at once, our mind naturally tries to fast-forward into the future—worrying whether everything will work out, whether our effort will be enough, or what others might think. That mental time-travel is what creates that suffocating feeling of drowning.\n\nIn Chapter 2 of the Bhagavad Gita (Verse 47), Krishna speaks directly to this human vulnerability: \"You have a right to your action, but never to the fruits of action.\"\n\nThis isn't cold detachment—it is the greatest psychological relief imaginable. It means you are only ever responsible for the single honest step you take right now. The results, the timeline, and the external reactions belong to the world. Put down the heavy burden of guaranteeing the future, and just focus on the next twenty minutes. You are doing much better than your tired mind is telling you.",
-    "isShlokaRelevant": true,
-    "shloka": {
-      "id": "BG2.47",
-      "chapter": 2,
-      "chapterName": "Sankhya Yoga (The Yoga of Knowledge)",
-      "verse": 47,
-      "sanskrit": "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥",
-      "transliteration": "karmaṇy-evādhikāras te mā phaleṣhu kadāchana\nmā karma-phala-hetur bhūr mā te saṅgo ’stv akarmaṇi",
-      "translation": "You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions. Never consider yourself the cause of the results of your activities, and never be attached to inaction.",
-      "author": "Swami Sivananda / Swami Gambhirananda",
-      "meaning": "Anxiety and overwhelm occur when the mind obsesses over outcomes it cannot guarantee. True freedom and peak effectiveness come from investing 100% of your energy into the immediate action before you, releasing anxiety over how it will be judged.",
-      "coreWisdom": "Focus entirely on the quality of your effort, and gently surrender anxiety about the outcome."
-    },
-    "detectedEmotion": "Overwhelm & Burnout",
-    "reflectionPrompt": "What is one outcome you have been stressing over that you cannot 100% guarantee today? Can you gently give yourself permission to let it unfold?",
-    "steps": [
-      "Write down the 3 biggest things creating anxiety, and circle only what you can physically do in the next hour.",
-      "Consciously release the rest by reminding yourself: \"My responsibility is the effort, not the universe's timeline.\"",
-      "Set a 20-minute timer and focus exclusively on the single next micro-task in front of you."
-    ]
-  },
-  "createdAt": "2026-09-24T12:45:00.000Z"
-}
-```
+### `gita_embeddings`
+Stores the enriched Bhagavad Gita corpus with precomputed embeddings:
+* `id`: Verse identifier (e.g. `BG3.35`, `BG2.47`)
+* `content_hash`: SHA-256 hash of the enriched document for idempotent synchronization
+* `embedding`: `vector(768)`
+* `metadata`: JSONB containing verse translation, wisdom, themes, and applications
 
 ---
 
-## 8. Approach & Challenges Faced
+## Anonymous Session Isolation
 
-### Problem-Solving Approach
-1. **RAG Architecture with Conditional Relevance:** The biggest trap in spiritual or philosophical apps is forcing verses where they do not belong. We implemented a strict relevance gate: queries that represent emotional struggles or life decisions trigger RAG retrieval; casual conversations receive empathetic dialogue without an unwanted verse card.
-2. **Human-First Conversational Synthesis:** Rather than producing rigid templates or generic AI summaries, the engine validates the user's emotional state, explains *why* the ancient verse applies to modern life, and concludes with an actionable micro-step.
-3. **Resilient Production Design:** The application incorporates graceful degradation: if an external LLM key is absent, the built-in high-EQ synthesizer generates natural conversational prose; if PostgreSQL is not configured locally, the file-backed JSON store preserves full persistence.
-
-### Challenges Faced & Solutions
-1. **Challenge: Preventing Forceful Shloka Insertion**  
-   *Problem:* Early prototypes tended to attach a verse to every input, which felt mechanical on casual queries like "Hello" or "Tell me about your tech stack".  
-   *Solution:* Built a dual-stage intent filter in `ragEngine.ts`. If a query is casual or its relevance score falls below 0.40, `isShlokaRelevant` is explicitly set to `false`, and no shloka is attached.
-2. **Challenge: Sanskrit Typography & Multi-Lingual Presentation**  
-   *Problem:* Presenting Devanagari text on diverse screen sizes often leads to awkward line wraps or unreadable fonts.  
-   *Solution:* Designed a specialized Shloka Card component with dedicated serif styling for Devanagari, gentle italics for transliteration, a 1-click copy action, and responsive padding.
-3. **Challenge: Test Suite Coverage for RAG Pipeline**  
-   *Problem:* Ensuring deterministic verification of retrieval accuracy across emotional domains.  
-   *Solution:* Wrote 15 automated unit and integration tests (`npm test`) covering normalization, category scoring, shloka retrieval accuracy (BG 2.47, BG 3.8), and conditional omission.
+KAAL AI provides privacy-respecting session isolation without requiring account creation:
+* The client generates a unique anonymous `sessionId` and stores it in `localStorage`.
+* The session ID is passed in the request header/body and used by backend queries to scope session history.
+* This provides clean multi-device isolation while keeping friction zero for a guidance experience.
 
 ---
 
-## 9. Local Setup & Testing
+## Automated Testing
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
+The project includes an automated test suite containing **29 passing tests**:
+* Category scoring and signal detection
+* Deterministic NLP understanding
+* Accurate Gita verse retrieval for specific dilemmas (e.g. BG 3.35 for life path confusion, BG 2.47 for outcome anxiety, BG 3.8 for procrastination)
+* Rejection of punitive/inappropriate matches (e.g. rejecting BG 4.40 for career uncertainty)
+* Relevance threshold gating (omits shloka for household complaints, greetings, and trivia)
+* Complete `StructuredGuidanceResponse` contract compliance
+* Database CRUD operations and anonymous session isolation
+* Multi-turn conversation thread management
+* Embedding dimension validation (strict 768d)
+* Enriched document construction & idempotent sync
 
-### 1. Clone & Install Dependencies
-```bash
-git clone https://github.com/shravanisdakve/KAAL-AI.git
-cd KAAL-AI
-npm install
-```
-
-### 2. Configure Environment (Optional)
-```bash
-cp .env.example .env
-# Optional: GEMINI_API_KEY for dynamic LLM generation
-# Optional: DATABASE_URL for PostgreSQL connection
-```
-
-### 3. Run Automated Tests
 ```bash
 npm test
 ```
-*Executes all 15 automated tests verifying normalization, scoring, RAG retrieval accuracy, and database persistence.*
-
-### 4. Run Development Server
-```bash
-npm run dev
-```
-*Boots the Express server and mounts Vite dev middleware at [http://localhost:3000](http://localhost:3000).*
-
-### 5. Build & Run for Production
-```bash
-npm run build
-npm start
-```
 
 ---
 
-## 10. Live Demo Walkthrough Guide (Evaluation Script)
+## Local Development
 
-Here is a recommended test sequence to showcase all the core intelligence and polish features during an evaluation or demo:
+1. **Clone and Install:**
+   ```bash
+   git clone https://github.com/shravanisdakve/KAAL-AI.git
+   cd KAAL-AI
+   npm install
+   ```
 
-### 1. Life Path Dilemma (Disambiguation & Svadharma)
-- **Prompt:** `"I feel confused about which path I should take in life."`
-- **What to observe:**
-  - Retrieves **Bhagavad Gita 3.35** (*Svadharma* / one's own authentic path) with high semantic confidence.
-  - Strictly avoids judgmental verses like **BG 4.40**.
-  - Generates a bespoke **Sunrise Crossroad** situational visual on the fly.
-  - "Why This Relates" frames the verse intellectually as an invitation to reflect, not rigid dogma.
+2. **Environment Configuration:**
+   Create a `.env` file:
+   ```text
+   PORT=3000
+   DATABASE_URL=postgresql://user:password@localhost:5432/kaal_ai
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
 
-### 2. Multi-Turn Continuous Dialogue (Samvāda)
-- **Follow-up Prompt in the same thread:** `"How do I know what belongs to my path versus what others expect?"`
-- **What to observe:**
-  - Message appends smoothly to the **same conversation thread** without starting a new chat.
-  - KAAL AI responds in dialogue, maintaining context from the previous exchange.
-  - The history sidebar maintains this single conversation thread.
+3. **Start Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-### 3. Overwhelm & Results Anxiety
-- **Start New Conversation**, then type: `"I have so many deadlines and I feel terrified that I won't succeed."`
-- **What to observe:**
-  - Retrieves **BG 2.47** (*Karmanye Vadhikaraste*).
-  - Generates a **Mirror-Still Mountain Lake at Dusk** situational scene.
-  - Practical 3-step action plan to ground the user in immediate effort.
-
-### 4. Relevance Threshold (No Forceful Shloka)
-- **Prompt:** `"My roommate keeps leaving dirty dishes in the kitchen sink and it is really bothering me."`
-- **What to observe:**
-  - RAG engine recognizes this as a household frustration rather than an existential spiritual crisis.
-  - **Zero shlokas are forced.**
-  - Delivers empathetic active listening and healthy communication guidance.
-
-### 5. Interactive Situational Visual
-- Hover over the visual to see the **Generated Scene Prompt Tooltip**.
-- Click the expand icon to inspect the **High-Resolution Contemplative Scene Modal**.
-
-### 6. Mobile Experience
-- Switch browser to mobile view (<1024px or iPhone mode).
-- Tap the hamburger icon to smoothly open the mobile drawer.
-- Select past sessions, delete conversations, or start a new conversation with touch gestures.
+4. **Run Verification Commands:**
+   ```bash
+   npm run lint   # TypeScript strict check (zero errors)
+   npm test       # 29-test automated suite
+   npm run build  # Vite production build
+   ```
 
 ---
 
-## 11. Evaluation Checklist & Compliance
+## Production Deployment on Render
 
-| Requirement | Implementation Detail | Status |
-|---|---|:---:|
-| **Bhagavad Gita RAG System** | Proper hybrid retrieval (semantic cosine similarity + lexical matching + multi-factor reranker) | ✅ 10/10 |
-| **Selective Shloka Relevance** | Conditional gating (score ≥ 0.70): only fetches shlokas when genuinely relevant, omits on mundane complaints | ✅ 10/10 |
-| **Natural Human Dialogue** | Compassionate active listening; responds like a wise mentor, not a robotic template | ✅ 10/10 |
-| **Multi-Turn Conversation** | Continuous dialogue thread between seeker and Krishna; follow-ups append to the active chat | ✅ 10/10 |
-| **Dynamic Situational Visuals** | Real-time procedural visual scene and bespoke prompt generated on the fly for each situation | ✅ 10/10 |
-| **Emotional Understanding** | Detects overwhelm, grief, indecision, procrastination, anger, and stillness with live badges | ✅ 10/10 |
-| **Frontend Shloka Card** | Dedicated card with Devanagari, transliteration, authentic translation, and 1-click copy action | ✅ 10/10 |
-| **Automated Test Suite** | 24 passing tests verifying RAG accuracy, relevance gating, visual generation, and multi-turn DB operations | ✅ 10/10 |
-| **Responsive Input & History** | Collapsible sidebar (Today, Yesterday, Earlier), item deletion, clear-all, and mobile drawer | ✅ 10/10 |
-| **Database Persistence** | PostgreSQL schema with JSONB columns + local JSON fallback | ✅ 10/10 |
-| **Live Deployed Link** | Deployed on Render at [https://kaal-ai.onrender.com/](https://kaal-ai.onrender.com/) | ✅ 10/10 |
-| **GitHub Repository** | Public repository with clean commit history | ✅ 10/10 |
+The application runs as a unified web service on Render:
+* **Service:** `kaal-ai` (Node.js web service)
+* **Build Command:** `npm install && npm run build`
+* **Start Command:** `npm start`
+* **Environment Variables:**
+  * `DATABASE_URL`: Render PostgreSQL connection string
+  * `GEMINI_API_KEY`: Google Gemini API key
+  * `NODE_ENV`: `production`
 
 ---
 
-*Submitted as part of the KAAL AI Technical Evaluation.*
+## Engineering Decisions
+
+1. **Why PostgreSQL + pgvector?**
+   The application already requires reliable relational persistence for conversation history. By using `pgvector`, we keep both relational data and vector storage in a single database, eliminating the operational overhead of a separate vector database.
+2. **Why Hybrid Retrieval?**
+   Vector similarity optimizes semantic recall, but cannot evaluate psychological appropriateness. Composite reranking with intent, emotion, and theme signals ensures precision.
+3. **Why 0.70 Relevance Threshold?**
+   A guidance tool must know when *not* to speak scripture. The 0.70 gate preserves intellectual honesty and prevents forced religious references.
+4. **Why Anonymous Session Isolation?**
+   Eliminating login walls encourages immediate reflection while preserving private conversation histories per device.
+5. **Why Deterministic Fallback?**
+   External AI APIs can experience rate limits or network latency. A deterministic fallback ensures the seeker always receives structured, compassionate guidance.
