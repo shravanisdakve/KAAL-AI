@@ -88,11 +88,15 @@ export interface StructuredGuidanceResponse {
   detectedEmotion?: string;
   reflectionPrompt?: string;
   situationVisual?: SituationVisual | null; // Bespoke situational visual generated on the fly, or null if not applicable
+  safetyFlag?: boolean;
+  safetyLevel?: 'high' | 'moderate' | 'low';
   meta?: {
     category: GuidanceCategory;
     pattern: string;
     score: number;
     matchedKeywords: string[];
+    safetyFlag?: boolean;
+    safetyLevel?: 'high' | 'moderate' | 'low';
     relevanceScore?: number;
     retrievalEngine?: string;
     engine: string;

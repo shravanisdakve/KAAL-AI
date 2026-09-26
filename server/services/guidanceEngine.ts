@@ -20,6 +20,12 @@ import {
   generateSituationVisual,
   shouldShowSituationVisual,
 } from './visualGenerator.ts';
+import {
+  detectHighRiskSafetySignal,
+  isSafetyFollowUp,
+  generateHighRiskSafetyResponse,
+  generateSafetyFollowUpResponse,
+} from './safetyEngine.ts';
 
 interface KeywordRule {
   term: string;
@@ -793,6 +799,23 @@ export async function runGuidanceEngine(
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;
 }> {
+  // 0. HIGH-RISK CRISIS SAFETY GATE (Highest Priority, Deterministic)
+  const safetyCheck = detectHighRiskSafetySignal(question);
+  if (safetyCheck.isHighRisk) {
+    return {
+      category: 'Relationships',
+      response: generateHighRiskSafetyResponse(question),
+    };
+  }
+
+  // 0b. SAFETY FOLLOW-UP CHECK (Maintains supportive safety context without jumping back to Gita/visuals)
+  if (isSafetyFollowUp(question, existingSession)) {
+    return {
+      category: 'Relationships',
+      response: generateSafetyFollowUpResponse(question),
+    };
+  }
+
   const normalized = normalizeText(question);
   const scoredCategories = calculateCategoryScores(normalized);
 
@@ -953,6 +976,15 @@ export function runGuidanceEngineSync(question: string): {
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;
 } {
+  // 0. HIGH-RISK CRISIS SAFETY GATE (Highest Priority, Deterministic)
+  const safetyCheck = detectHighRiskSafetySignal(question);
+  if (safetyCheck.isHighRisk) {
+    return {
+      category: 'Relationships',
+      response: generateHighRiskSafetyResponse(question),
+    };
+  }
+
   const normalized = normalizeText(question);
   const scoredCategories = calculateCategoryScores(normalized);
 

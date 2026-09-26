@@ -2,6 +2,7 @@ import { BHAGAVAD_GITA_CORPUS } from '../data/gitaDataset.ts';
 import { GitaShloka, NlpUnderstanding } from '../types/guidance.ts';
 import { embeddingService } from './embeddingService.ts';
 import { dbClient } from '../db/client.ts';
+import { detectHighRiskSafetySignal } from './safetyEngine.ts';
 
 export const GITA_RELEVANCE_THRESHOLD = 0.70;
 
@@ -491,7 +492,12 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
       lower.includes('relationship') ||
       lower.includes('in-law');
 
-    if (isLifeDirection) {
+    const safetyCheck = detectHighRiskSafetySignal(query);
+    if (safetyCheck.isHighRisk) {
+      intent = 'crisis_safety';
+      topics.push('crisis_safety', 'immediate_support', 'emotional_distress', 'safety_helpline');
+      needs.push('safety_check', 'crisis_helpline', 'human_connection', 'immediate_support');
+    } else if (isLifeDirection) {
       intent = 'life_direction';
       topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
       needs.push('clarity', 'authentic_direction', 'decision_support', 'boundary_setting');
@@ -881,11 +887,11 @@ export function retrieveGitaShlokaRAGSync(query: string): RAGRetrievalResult {
   const nlpUnderstanding = extractNlpUnderstanding(query);
   const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
 
-  if (isCasualOrNonSpiritualQuery(query)) {
+  if (detectHighRiskSafetySignal(query).isHighRisk || isCasualOrNonSpiritualQuery(query)) {
     return {
       shloka: null,
       isShlokaRelevant: false,
-      detectedEmotion,
+      detectedEmotion: detectHighRiskSafetySignal(query).isHighRisk ? 'immediate support' : detectedEmotion,
       relevanceScore: 0,
       matchedThemes: [],
       nlpUnderstanding,
@@ -934,11 +940,11 @@ export async function retrieveGitaShlokaRAG(query: string): Promise<RAGRetrieval
   const nlpUnderstanding = extractNlpUnderstanding(query);
   const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
 
-  if (isCasualOrNonSpiritualQuery(query)) {
+  if (detectHighRiskSafetySignal(query).isHighRisk || isCasualOrNonSpiritualQuery(query)) {
     return {
       shloka: null,
       isShlokaRelevant: false,
-      detectedEmotion,
+      detectedEmotion: detectHighRiskSafetySignal(query).isHighRisk ? 'immediate support' : detectedEmotion,
       relevanceScore: 0,
       matchedThemes: [],
       nlpUnderstanding,

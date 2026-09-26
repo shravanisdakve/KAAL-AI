@@ -9,6 +9,7 @@ import {
   isFactualTriviaQuery,
   isSelfWorthCriticismQuery,
 } from './ragEngine.ts';
+import { detectHighRiskSafetySignal } from './safetyEngine.ts';
 
 export interface VisualDecisionInput {
   question: string;
@@ -18,6 +19,7 @@ export interface VisualDecisionInput {
   topics?: string[];
   needs?: string[];
   isShlokaRelevant: boolean;
+  safetyFlag?: boolean;
 }
 
 export interface VisualDecisionResult {
@@ -36,6 +38,7 @@ export interface VisualGeneratorParams {
   shloka?: GitaShloka | null;
   isShlokaRelevant: boolean;
   seedOverride?: number;
+  safetyFlag?: boolean;
 }
 
 /**
@@ -49,6 +52,22 @@ export interface VisualGeneratorParams {
 export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDecisionResult {
   const { question, category, intent, topics = [], needs = [] } = input;
   const qLower = question.toLowerCase().trim();
+
+  // ---------------------------------------------------------
+  // 0. HIGH-RISK CRISIS SAFETY GATE (Absolute Negative Filter)
+  // Crisis, self-harm, or suicidal queries NEVER get visuals.
+  // ---------------------------------------------------------
+  if (
+    input.safetyFlag ||
+    intent === 'crisis_safety' ||
+    detectHighRiskSafetySignal(question).isHighRisk
+  ) {
+    return {
+      show: false,
+      reason: 'High-risk crisis safety queries must never display decorative visuals',
+      confidence: 1.0,
+    };
+  }
 
   // ---------------------------------------------------------
   // 1. REJECTION GATES (Negative Filters - Highest Priority)
@@ -310,7 +329,12 @@ function hashString(str: string): number {
  * exact emotional dilemma, question, and philosophical guidance.
  */
 export function generateSituationVisual(params: VisualGeneratorParams): SituationVisual {
-  const { question, category, detectedEmotion, intent, topics = [], needs = [], shloka, isShlokaRelevant, seedOverride } = params;
+  const { question, category, detectedEmotion, intent, topics = [], needs = [], shloka, isShlokaRelevant, seedOverride, safetyFlag } = params;
+  
+  if (safetyFlag || intent === 'crisis_safety' || detectHighRiskSafetySignal(question).isHighRisk) {
+    return null as any;
+  }
+
   const qLower = question.toLowerCase();
   const seed = seedOverride ?? hashString(question);
 
