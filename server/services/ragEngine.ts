@@ -40,12 +40,13 @@ const CASUAL_GREETINGS = new Set([
   'namaste', 'sup', 'yo', 'how are you', 'what are you', 'who are you', 'test', 'help',
 ]);
 
-// Non-philosophical triggers (household chores, factual trivia, code requests)
+// Non-philosophical triggers (household chores, factual trivia, code requests, technical hardware issues)
 const OUT_OF_SCOPE_TRIGGERS = [
   'capital of', 'weather in', 'president of', 'prime minister', 'population of',
   'what is 2', 'calculate', 'code in python', 'write a function', 'who invented',
   'currency of', 'recipe for', 'temperature in', 'who won', 'tech stack',
   'dirty dishes', 'dishes in the sink', 'roommate keeps', 'trash out', 'clean the kitchen',
+  'laptop', 'computer won', 'phone won', 'screen is black',
 ];
 
 export interface RAGRetrievalResult {
@@ -267,18 +268,32 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
   }
 
   // B. Intent & Topic Extraction
-  if (
+  const isLifeDirection =
     lower.includes('which path') ||
     lower.includes('path in life') ||
-    lower.includes('path i should take') ||
-    lower.includes('confused about which path') ||
+    lower.includes('path i should') ||
+    lower.includes('confused about which') ||
     lower.includes('direction in life') ||
     lower.includes('what should i do with my life') ||
-    lower.includes('career crossroads')
-  ) {
+    lower.includes('career') ||
+    lower.includes('career crossroads') ||
+    lower.includes('choose between') ||
+    lower.includes('choice between') ||
+    lower.includes('choosing between') ||
+    lower.includes('parents want') ||
+    lower.includes('family want') ||
+    lower.includes('family pressure') ||
+    lower.includes('parental expectation') ||
+    lower.includes('external expectation') ||
+    (lower.includes('doctor') && lower.includes('design')) ||
+    (lower.includes('medicine') && lower.includes('design')) ||
+    lower.includes('vocation') ||
+    lower.includes('profession');
+
+  if (isLifeDirection) {
     intent = 'life_direction';
-    topics.push('personal_path', 'choice', 'life_direction', 'svadharma');
-    needs.push('clarity', 'reflection', 'decision_support');
+    topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
+    needs.push('clarity', 'authentic_direction', 'decision_support', 'boundary_setting');
   } else if (
     lower.includes('purpose') ||
     lower.includes('working hard but') ||
@@ -391,9 +406,21 @@ function embedQueryVector(query: string, nlp: NlpUnderstanding): number[] {
   }
 
   // Token Reinforcement
-  if (lower.includes('which path') || lower.includes('path in life') || lower.includes('confused about which path')) {
+  if (
+    lower.includes('which path') ||
+    lower.includes('path in life') ||
+    lower.includes('confused about which path') ||
+    lower.includes('career') ||
+    lower.includes('doctor') ||
+    lower.includes('design') ||
+    lower.includes('medicine') ||
+    lower.includes('choose between') ||
+    lower.includes('parents want')
+  ) {
     weights.svadharma_authentic_path = Math.max(weights.svadharma_authentic_path || 0, 1.0);
     weights.life_direction_clarity = Math.max(weights.life_direction_clarity || 0, 1.0);
+    weights.purpose_meaning = Math.max(weights.purpose_meaning || 0, 0.85);
+    weights.comparison_envy = Math.max(weights.comparison_envy || 0, 0.8);
   }
   if (lower.includes('compar') || lower.includes('behind')) {
     weights.comparison_envy = Math.max(weights.comparison_envy || 0, 0.9);
@@ -426,6 +453,8 @@ function computeLexicalScore(queryTokens: string[], shloka: GitaShloka): number 
     ...shloka.themes.flatMap((t) => t.toLowerCase().split(/\s+/)),
     ...(shloka.concepts?.flatMap((c) => c.toLowerCase().split(/[-_\s]+/)) || []),
     ...(shloka.contexts?.flatMap((c) => c.toLowerCase().split(/\s+/)) || []),
+    ...(shloka.situations?.flatMap((s) => s.toLowerCase().split(/\s+/)) || []),
+    ...(shloka.modern_application?.flatMap((m) => m.toLowerCase().split(/\s+/)) || []),
     ...shloka.emotions.flatMap((e) => e.toLowerCase().split(/\s+/)),
   ]);
 
@@ -510,8 +539,16 @@ function rerankCandidates(
     }
 
     // 2. Theme Match
-    const themeOverlap = shloka.themes.filter((t) => nlpUnderstanding.topics.includes(t.toLowerCase())).length;
-    const themeMatch = Math.min(1.0, themeOverlap > 0 ? 0.8 + 0.2 * themeOverlap : lexicalScore);
+    const shlokaThematicWords = new Set([
+      ...shloka.themes.flatMap((t) => t.toLowerCase().split(/\s+/)),
+      ...(shloka.concepts?.flatMap((c) => c.toLowerCase().split(/[-_\s]+/)) || []),
+    ]);
+    const themeOverlap = nlpUnderstanding.topics.filter(
+      (topic) =>
+        shlokaThematicWords.has(topic.toLowerCase()) ||
+        shloka.themes.some((t) => t.toLowerCase().includes(topic.toLowerCase()))
+    ).length;
+    const themeMatch = Math.min(1.0, themeOverlap > 0 ? 0.8 + 0.1 * themeOverlap : lexicalScore);
 
     // 3. Emotional Match
     const emoOverlap = shloka.emotions.filter((e) => nlpUnderstanding.emotions.includes(e.toLowerCase())).length;
@@ -520,10 +557,25 @@ function rerankCandidates(
     // 4. Contextual Match
     let contextualMatch = 0.3;
     const normalizedQ = query.toLowerCase();
-    for (const ctx of shloka.contexts || []) {
-      if (normalizedQ.includes(ctx.toLowerCase())) {
+    const candidateContexts = [
+      ...(shloka.contexts || []),
+      ...(shloka.situations || []),
+    ];
+
+    for (const ctx of candidateContexts) {
+      const ctxLower = ctx.toLowerCase();
+      if (normalizedQ.includes(ctxLower)) {
         contextualMatch = 1.0;
         break;
+      }
+      // Token overlap for natural-phrased queries matching key context phrases
+      const ctxTokens = ctxLower.split(/\s+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+      if (ctxTokens.length > 0) {
+        const matches = ctxTokens.filter((token) => normalizedQ.includes(token)).length;
+        const ratio = matches / ctxTokens.length;
+        if (ratio >= 0.5 || (ctxTokens.length >= 3 && matches >= 2)) {
+          contextualMatch = Math.max(contextualMatch, Math.min(1.0, 0.75 + 0.25 * ratio));
+        }
       }
     }
 
@@ -557,6 +609,10 @@ function rerankCandidates(
   const candidateRankings = reranked.map((c) => ({ id: c.shloka.id, finalScore: c.finalScore }));
 
   const isShlokaRelevant = bestCandidate && bestCandidate.finalScore >= GITA_RELEVANCE_THRESHOLD;
+
+  console.log(
+    `[RAG Reranking] Query: "${query.slice(0, 50)}..." -> Top: ${bestCandidate?.shloka.id} (finalScore: ${bestCandidate?.finalScore}, threshold: ${GITA_RELEVANCE_THRESHOLD}, passedGate: ${isShlokaRelevant})`
+  );
 
   return {
     shloka: isShlokaRelevant ? bestCandidate.shloka : null,

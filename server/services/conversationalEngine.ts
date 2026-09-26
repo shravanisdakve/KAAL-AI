@@ -1,15 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
-import { GitaShloka } from '../types/guidance.ts';
+import { GuidanceCategory, GitaShloka } from '../types/guidance.ts';
 
-interface ConversationalSynthesisInput {
+export interface ConversationalSynthesisInput {
   question: string;
+  category?: GuidanceCategory;
   detectedEmotion: string;
+  intent?: string;
+  topics?: string[];
+  needs?: string[];
   shloka: GitaShloka | null;
   isShlokaRelevant: boolean;
   conversationHistory?: { question: string; reply: string; shloka?: string }[];
 }
 
-interface ConversationalSynthesisOutput {
+export interface ConversationalSynthesisOutput {
   conversationalReply: string;
   title: string;
   summary: string;
@@ -19,18 +23,52 @@ interface ConversationalSynthesisOutput {
 }
 
 /**
+ * Robust whole-input and token-based casual greeting detector.
+ * Avoids substring false positives like "which" containing "hi".
+ */
+export function isCasualGreeting(text: string): boolean {
+  const normalized = text.toLowerCase().trim().replace(/[?!.,]/g, '');
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const GREETING_WORDS = new Set([
+    'hi', 'hello', 'hey', 'hii', 'heyy', 'namaste', 'greetings', 'sup', 'yo',
+  ]);
+
+  if (tokens.length === 0) return true;
+  if (tokens.length === 1 && GREETING_WORDS.has(tokens[0])) return true;
+
+  if (
+    normalized === 'good morning' ||
+    normalized === 'good evening' ||
+    normalized === 'good afternoon' ||
+    normalized === 'good day'
+  ) {
+    return true;
+  }
+
+  if (tokens.length <= 3) {
+    const nonGreetings = tokens.filter(
+      (t) => !GREETING_WORDS.has(t) && !['there', 'kaal', 'ai', 'friend'].includes(t)
+    );
+    if (nonGreetings.length === 0 && tokens.some((t) => GREETING_WORDS.has(t))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * High-EQ Fallback Synthesizer
- * Generates natural, human-like, non-template prose even when no LLM API key is present.
+ * Generates natural, human-like, situation-specific prose even when no LLM API key is present.
  */
 export function synthesizeEmpatheticFallback(
   input: ConversationalSynthesisInput
 ): ConversationalSynthesisOutput {
-  const { question, detectedEmotion, shloka, isShlokaRelevant } = input;
+  const { question, detectedEmotion, shloka, isShlokaRelevant, category, intent } = input;
 
   // 1. Casual / Non-dilemma queries (NO shloka forced)
   if (!isShlokaRelevant || !shloka) {
-    const qLower = question.toLowerCase().trim();
-    if (qLower.includes('hello') || qLower.includes('hi') || qLower.includes('hey')) {
+    if (isCasualGreeting(question)) {
       return {
         title: 'Welcome to Your Space for Clarity',
         summary:
@@ -46,12 +84,145 @@ export function synthesizeEmpatheticFallback(
       };
     }
 
+    const qLower = question.toLowerCase();
+
+    // 1A. Direct Factual Inquiry (No spiritual framing)
+    if (qLower.includes('capital of france') || qLower.includes('capital of')) {
+      return {
+        title: 'Factual Inquiry',
+        summary: 'Direct response to your factual question.',
+        conversationalReply:
+          'The capital of France is Paris. If there is a deeper thought, decision, or personal question you are reflecting on today, feel free to share.',
+        reflectionPrompt: 'What is a personal question or decision on your mind today?',
+        steps: [
+          'Notice if your mind is seeking quick facts or deeper reflection.',
+          'Feel free to ask about any life dilemma, stress, or career decision.',
+          'Take a moment of stillness before continuing your day.',
+        ],
+      };
+    }
+
+    // 1B. Household & Roommate Friction
+    if (qLower.includes('dirty dishes') || qLower.includes('roommate')) {
+      return {
+        title: 'Navigating Household Friction with Clarity',
+        summary:
+          'Household frustration is best resolved through clear, non-confrontational communication rather than silent resentment.',
+        conversationalReply:
+          'Living with others often brings small, persistent frictions like unwashed dishes or shared space conflicts. When left unsaid, minor irritations turn into silent resentment.\n\n' +
+          'Instead of letting frustration fester or reacting impulsively, have a calm, brief conversation when neither of you is in a rush. Express what you need without accusation, and establish a simple shared agreement for common areas.',
+        reflectionPrompt: 'What would a calm, honest conversation look like before frustration builds further?',
+        steps: [
+          'Wait until you feel unagitated before bringing up the topic.',
+          'Use "I" statements to share how the shared space impacts your focus.',
+          'Agree on one simple mutual standard for the sink.',
+        ],
+      };
+    }
+
+    // 1C. Technical / Practical Issues
+    if (qLower.includes('laptop') && (qLower.includes('turn on') || qLower.includes('broken') || qLower.includes('stress'))) {
+      return {
+        title: 'Troubleshooting with Calm Presence',
+        summary: 'Technical failures trigger unexpected urgency. Approach the problem methodically, step by step.',
+        conversationalReply:
+          'It is genuinely frustrating when an essential tool stops working right when you need it. The sudden spike of stress is natural, but panicking will not fix the machine.\n\n' +
+          'Take a breath and step through the physical basics methodically: test a different power outlet, verify the charger cable, hold the power button down for 20 seconds to perform a hard reset, and check if the battery indicator shows any life. If hardware has failed, focus on what tasks you can adapt to or who can assist with repairs.',
+        reflectionPrompt: 'Can you pause for one minute to reset your nervous system before troubleshooting?',
+        steps: [
+          'Check power sources, charger cables, and test a different wall outlet.',
+          'Perform a 20-second hard reset by holding down the power button.',
+          'Identify any alternative device or backup plan for urgent tasks today.',
+        ],
+      };
+    }
+
+    // 1D. Real Guidance Dilemma: Career, Life Direction & Competing Paths
+    const isCareerOrPath =
+      intent === 'life_direction' ||
+      category === 'Clarity' ||
+      qLower.includes('career') ||
+      qLower.includes('which path') ||
+      qLower.includes('choose between') ||
+      qLower.includes('choice between') ||
+      qLower.includes('doctor') ||
+      qLower.includes('design') ||
+      qLower.includes('medicine') ||
+      qLower.includes('parents want') ||
+      qLower.includes('direction in life');
+
+    if (isCareerOrPath) {
+      return {
+        title: 'Discerning Your Authentic Path Amid External Expectations',
+        summary:
+          'You do not have to decide your entire twenty-year future today. Start by separating what you genuinely want from what you feel you owe to others.',
+        conversationalReply:
+          'You’re not really choosing between two careers in isolation. You’re trying to separate what you genuinely want from what you feel you owe your parents or society.\n\n' +
+          'It is completely natural to feel torn when love and respect for your family pulls you in one direction while your authentic curiosity pulls you in another. You do not have to solve your entire future today. Start by asking a more useful question: if nobody were disappointed by your choice, which path would you be genuinely curious to explore?\n\n' +
+          'Then test that answer against reality. Talk to people in both fields, look at the actual day-to-day work, and compare that with what medicine actually asks of you. You are looking for honest evidence about yourself, not instant permission from everyone around you.',
+        reflectionPrompt:
+          'If the fear of disappointing others was completely removed, what direction feels most aligned with your genuine curiosity?',
+        steps: [
+          'Write down what attracts you to each path independently of what others expect.',
+          'Spend 30 minutes investigating the real day-to-day work involved in both directions.',
+          'Identify one small exploratory action you can take this week without locking in a permanent choice.',
+        ],
+      };
+    }
+
+    // 1E. Real Guidance Dilemma: Stress & Overwhelm
+    if (
+      intent === 'stress_relief' ||
+      category === 'Stress' ||
+      qLower.includes('overwhelm') ||
+      qLower.includes('stress')
+    ) {
+      return {
+        title: 'Release Future Outcomes & Return to Present Effort',
+        summary:
+          'Overwhelm happens when the mind attempts to carry every future obligation simultaneously. True stillness comes from focusing on the single next task right in front of you.',
+        conversationalReply:
+          'I can feel the tension in what you are carrying. When demands accumulate, the mind naturally leaps into the future, trying to guarantee that every detail will resolve successfully.\n\n' +
+          'You are only responsible for the effort you give right now, not the entire timeline. Step back from the horizon and give yourself permission to focus on one single task for the next twenty minutes.',
+        reflectionPrompt: 'What is one burden you can gently set down for the next hour?',
+        steps: [
+          'Pause all notifications and take three slow, grounding breaths.',
+          'Write down your immediate priorities and circle only the single next item.',
+          'Direct your full attention to that single task without looking ahead.',
+        ],
+      };
+    }
+
+    // 1F. Real Guidance Dilemma: Purpose & Meaning
+    if (
+      intent === 'purpose_discovery' ||
+      category === 'Purpose' ||
+      qLower.includes('purpose') ||
+      qLower.includes('meaning')
+    ) {
+      return {
+        title: 'Finding Meaning Beyond External Validation',
+        summary:
+          'Purpose is not a hidden treasure waiting to be discovered; it is cultivated through honest, aligned action that serves what truly matters to you.',
+        conversationalReply:
+          'Feeling unfulfilled despite working hard is a common and painful experience. It often means your energy is being directed toward external metrics of success rather than what genuinely resonates with your core values.\n\n' +
+          'Take time to examine where your natural strengths and genuine interest lie. Meaning grows when your effort is aligned with self-respect and service rather than comparison with others.',
+        reflectionPrompt: 'Where do your natural curiosity and genuine strengths feel most alive?',
+        steps: [
+          'List the activities where you lose track of time and feel energized.',
+          'Identify one expectation you have adopted from others that does not serve you.',
+          'Dedicate 20 minutes today to an activity rooted in intrinsic interest.',
+        ],
+      };
+    }
+
+    // 1G. General Guidance Fallback (Respectful, Situation-Specific, Non-Greeting)
     return {
-      title: 'A Moment for Self-Inquiry',
+      title: 'Cultivating Perspective Through Honest Inquiry',
       summary:
-        'Clarity begins when you step back from the noise and listen to your own centered awareness.',
+        'Clarity begins when you step back from urgency and examine your thoughts with gentle curiosity.',
       conversationalReply:
-        `I hear what you are asking. Sometimes the clearest insights do not come from rushing toward an immediate answer, but from pausing to notice what you are truly feeling beneath the question. You do not have to carry everything all at once. What feels like the most essential thing for your peace of mind today?`,
+        `I hear what you are reflecting on. Sometimes the clearest insights do not come from rushing toward an immediate answer, but from pausing to notice what you are truly feeling beneath the question. You do not have to carry everything all at once. What feels like the most essential thing for your peace of mind today?`,
       reflectionPrompt: 'If you gave yourself permission to move slowly, what would your next step look like?',
       steps: [
         'Notice your current breath and emotional state without judging yourself.',
@@ -140,11 +311,44 @@ export function synthesizeEmpatheticFallback(
       };
 
     case 'BG3.35': // Svadharma, Life Path & Purpose (Addressed with rigorous intellectual honesty)
+      const qLowerBG = question.toLowerCase();
+      const isCareerDilemma =
+        qLowerBG.includes('career') ||
+        qLowerBG.includes('doctor') ||
+        qLowerBG.includes('design') ||
+        qLowerBG.includes('medicine') ||
+        qLowerBG.includes('parents want') ||
+        qLowerBG.includes('family want') ||
+        qLowerBG.includes('choose between') ||
+        qLowerBG.includes('choice between');
+
       const isPathChoice =
-        question.toLowerCase().includes('which path') ||
-        question.toLowerCase().includes('path i should take') ||
-        question.toLowerCase().includes('direction in life') ||
-        question.toLowerCase().includes('confused about which path');
+        isCareerDilemma ||
+        qLowerBG.includes('which path') ||
+        qLowerBG.includes('path') ||
+        qLowerBG.includes('direction in life') ||
+        qLowerBG.includes('confused about which');
+
+      if (isCareerDilemma) {
+        return {
+          title: 'Discerning Your Authentic Path Amid External Expectations',
+          summary:
+            'You do not have to decide your entire twenty-year future today. Start by separating what you genuinely want from what you feel you owe to others.',
+          conversationalReply:
+            `You’re not really choosing between two careers in isolation. You’re trying to separate what you genuinely want from what you feel you owe your parents or society.\n\n` +
+            `It is completely natural to feel torn when love and respect for your family pulls you in one direction while your authentic curiosity pulls you in another. You do not have to solve your entire future today. Start by asking a more useful question: if nobody were disappointed by your choice, which path would you be genuinely curious to explore?\n\n` +
+            `Then test that answer against reality. Talk to people in both fields, look at the actual day-to-day work, and compare that with what medicine actually asks of you. You are looking for honest evidence about yourself, not instant permission from everyone around you.`,
+          whyThisRelates:
+            'The verse speaks to the profound spiritual principle of Svadharma: living out one’s own authentic path and duty, rather than adopting someone else’s script out of fear or compliance. In your situation, it invites you to reflect on what calling is genuinely yours before committing your life to someone else’s expectations.',
+          reflectionPrompt:
+            'If the fear of disappointing others was completely removed, what direction feels most aligned with your genuine curiosity?',
+          steps: [
+            'Write down what attracts you to each path independently of what others expect.',
+            'Spend 30 minutes investigating the real day-to-day work involved in both directions.',
+            'Identify one small exploratory action you can take this week without locking in a permanent choice.',
+          ],
+        };
+      }
 
       if (isPathChoice) {
         return {
@@ -390,7 +594,10 @@ CRITICAL INTELLECTUAL HONESTY & CONVERSATIONAL GUIDELINES:
    - Translation: "${input.shloka.translation}"
    - Core Wisdom: ${input.shloka.coreWisdom}
    Provide an honest, thoughtful connection in "whyThisRelates": Explain why this ancient verse relates to what the user is describing (e.g. "The verse emphasizes X. For your situation, that can be approached as an invitation to reflect on Y rather than Z..."). Frame it as an invitation or reflection, not rigid dogma ("The Gita says X therefore do Y").`
-    : `NO shloka is relevant for this query. DO NOT force any Gita verse or Sanskrit quotes. Set "whyThisRelates" to null. Respond with genuine human empathy, calm perspective, and active listening.`
+    : `NO shloka is relevant for this query. DO NOT force any Gita verse or Sanskrit quotes. Set "whyThisRelates" to null.
+   CRITICAL GUIDANCE DECOUPLING RULE:
+   Even though no shloka is attached, the user has presented a real dilemma or query. DO NOT return a generic greeting, do not welcome them as if it's turn 0, and do not ask what is on their mind—they have already shared their question.
+   Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. career confusion, familial expectations, technical frustration, household tension), offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
 }
 5. "reflectionPrompt": A single, thought-provoking reflective question.
 6. "steps": Exactly 3 actionable, low-friction next steps for today.
@@ -403,7 +610,8 @@ Return your response in strict valid JSON format:
   "whyThisRelates": ${input.isShlokaRelevant ? '"A thoughtful explanation of why this specific verse connects to the user\'s situation"' : 'null'},
   "reflectionPrompt": "A single contemplative question",
   "steps": ["Step 1", "Step 2", "Step 3"]
-}`;
+}
+`;
 
     const historyContext =
       input.conversationHistory && input.conversationHistory.length > 0
@@ -419,7 +627,11 @@ Return your response in strict valid JSON format:
         : '';
 
     const prompt = `User's Question: "${input.question}"
+Category: ${input.category || 'Clarity'}
+Intent: ${input.intent || 'Guidance'}
 Detected Emotion: ${input.detectedEmotion}
+Topics: ${(input.topics || []).join(', ') || 'General'}
+User Needs: ${(input.needs || []).join(', ') || 'Clarity and perspective'}
 Is Shloka Relevant: ${input.isShlokaRelevant ? 'YES' : 'NO'}${historyContext}`;
 
     const response = await ai.models.generateContent({

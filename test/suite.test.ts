@@ -233,12 +233,62 @@ async function runTestSuite() {
     assert.strictEqual(response.steps.length, 3);
   });
 
+  await test('Casual Greeting Token Matching: distinguishes greetings from words containing "hi" like "which"', async () => {
+    const { isCasualGreeting } = await import('../server/services/conversationalEngine.ts');
+    assert.strictEqual(isCasualGreeting('Hello'), true);
+    assert.strictEqual(isCasualGreeting('Hi'), true);
+    assert.strictEqual(isCasualGreeting('Hey there'), true);
+    assert.strictEqual(isCasualGreeting('which career path should I choose?'), false);
+    assert.strictEqual(isCasualGreeting('which path'), false);
+    assert.strictEqual(isCasualGreeting('which'), false);
+  });
+
   await test('Conversational Engine: natural conversational reply without shloka for casual greeting', async () => {
     const { response } = await runGuidanceEngine('Hello');
     assert.strictEqual(response.isShlokaRelevant, false);
     assert.strictEqual(response.shloka, null);
     assert.strictEqual(response.whyThisRelates, undefined);
     assert.ok(response.conversationalReply.toLowerCase().includes('welcome') || response.conversationalReply.toLowerCase().includes('breath'));
+  });
+
+  await test('Career Dilemma RAG & Guidance: correctly retrieves BG 3.35 with >= 0.70 score for parental expectations vs design', async () => {
+    const query = "I'm confused about which career path I should choose. My parents want me to become a doctor, but I really want to pursue design.";
+    const rag = await retrieveGitaShlokaRAG(query);
+    assert.strictEqual(rag.isShlokaRelevant, true);
+    assert.ok(rag.shloka);
+    assert.strictEqual(rag.shloka?.id, 'BG3.35');
+    assert.ok(rag.finalScore >= 0.70);
+    assert.strictEqual(rag.nlpUnderstanding.intent, 'life_direction');
+    assert.ok(rag.nlpUnderstanding.topics.includes('career'));
+
+    const { response } = await runGuidanceEngine(query);
+    assert.strictEqual(response.isShlokaRelevant, true);
+    assert.strictEqual(response.shloka?.id, 'BG3.35');
+    assert.ok(response.title.includes('Authentic Path') || response.title.includes('path'));
+    assert.ok(response.whyThisRelates);
+    assert.ok(response.whyThisRelates.includes('Svadharma') || response.whyThisRelates.includes('path'));
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Decoupled Guidance: delivers situation-specific guidance and steps when no shloka is relevant (never generic greeting)', async () => {
+    const { response } = await runGuidanceEngine("My laptop won't turn on");
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.whyThisRelates, undefined);
+    assert.ok(!response.title.includes('Welcome'));
+    assert.ok(response.title.includes('Troubleshooting') || response.title.includes('Perspective'));
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.steps[0].toLowerCase().includes('power') || response.steps[0].toLowerCase().includes('check') || response.steps[0].toLowerCase().includes('breath'));
+  });
+
+  await test('Household Dilemma: provides situation-specific friction advice without shloka', async () => {
+    const { response } = await runGuidanceEngine("My roommate keeps leaving dirty dishes in the sink");
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.whyThisRelates, undefined);
+    assert.ok(!response.title.includes('Welcome'));
+    assert.ok(response.title.includes('Friction') || response.title.includes('Perspective'));
+    assert.strictEqual(response.steps.length, 3);
   });
 
   // 5. Database Operations & Dual-Persistence

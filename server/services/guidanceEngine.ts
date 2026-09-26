@@ -682,7 +682,11 @@ export async function runGuidanceEngine(
   // 2. Synthesize Human-Like Conversational Guidance with conversation history
   const conversational = await generateConversationalGuidance({
     question,
+    category: resolvedCategory,
     detectedEmotion: ragResult.detectedEmotion,
+    intent: ragResult.nlpUnderstanding.intent,
+    topics: ragResult.nlpUnderstanding.topics,
+    needs: ragResult.nlpUnderstanding.needs,
     shloka: ragResult.shloka,
     isShlokaRelevant: ragResult.isShlokaRelevant,
     conversationHistory,
@@ -771,7 +775,11 @@ export function runGuidanceEngineSync(question: string): {
   const ragResult = retrieveGitaShlokaRAGSync(question);
   const conversational = synthesizeEmpatheticFallback({
     question,
+    category: resolvedCategory,
     detectedEmotion: ragResult.detectedEmotion,
+    intent: ragResult.nlpUnderstanding.intent,
+    topics: ragResult.nlpUnderstanding.topics,
+    needs: ragResult.nlpUnderstanding.needs,
     shloka: ragResult.shloka,
     isShlokaRelevant: ragResult.isShlokaRelevant,
   });
