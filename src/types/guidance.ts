@@ -116,6 +116,7 @@ export interface GuidanceExchange {
 
 export interface GuidanceSession {
   id: number;
+  sessionId?: string; // Anonymous client session identifier for history isolation
   question: string;
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;

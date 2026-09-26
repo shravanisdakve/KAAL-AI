@@ -4,7 +4,7 @@ import {
   StructuredGuidanceResponse,
   TacticalStep,
 } from '../types/guidance.ts';
-import { retrieveGitaShlokaRAG } from './ragEngine.ts';
+import { retrieveGitaShlokaRAG, retrieveGitaShlokaRAGSync } from './ragEngine.ts';
 import {
   generateConversationalGuidance,
   synthesizeEmpatheticFallback,
@@ -659,7 +659,7 @@ export async function runGuidanceEngine(
   }
 
   // 1. Run Bhagavad Gita RAG Retrieval Pipeline
-  const ragResult = retrieveGitaShlokaRAG(question);
+  const ragResult = await retrieveGitaShlokaRAG(question);
 
   // Extract previous conversation turns if continuing a dialogue
   const conversationHistory =
@@ -768,7 +768,7 @@ export function runGuidanceEngineSync(question: string): {
     resolvedCategory = 'General Reflection';
   }
 
-  const ragResult = retrieveGitaShlokaRAG(question);
+  const ragResult = retrieveGitaShlokaRAGSync(question);
   const conversational = synthesizeEmpatheticFallback({
     question,
     detectedEmotion: ragResult.detectedEmotion,

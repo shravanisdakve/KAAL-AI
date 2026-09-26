@@ -82,8 +82,8 @@ async function runTestSuite() {
     assert.ok(nlp.needs.includes('clarity'));
   });
 
-  await test('Life Path Dilemma: retrieves BG 3.35 (Svadharma) and rejects BG 4.40 for life path confusion', () => {
-    const rag = retrieveGitaShlokaRAG('I feel confused about which path I should take in life.');
+  await test('Life Path Dilemma: retrieves BG 3.35 (Svadharma) and rejects BG 4.40 for life path confusion', async () => {
+    const rag = await retrieveGitaShlokaRAG('I feel confused about which path I should take in life.');
     assert.strictEqual(rag.isShlokaRelevant, true);
     assert.ok(rag.shloka);
     assert.strictEqual(rag.shloka?.id, 'BG3.35'); // Validates correct Svadharma verse
@@ -93,16 +93,16 @@ async function runTestSuite() {
     assert.ok(rag.candidateRankings.length > 0);
   });
 
-  await test('RAG Relevance Threshold: does NOT force a shloka for mundane household complaints (roommate dirty dishes)', () => {
-    const rag = retrieveGitaShlokaRAG(
+  await test('RAG Relevance Threshold: does NOT force a shloka for mundane household complaints (roommate dirty dishes)', async () => {
+    const rag = await retrieveGitaShlokaRAG(
       'My roommate keeps leaving dirty dishes in the sink and it is driving me crazy.'
     );
     assert.strictEqual(rag.isShlokaRelevant, false);
     assert.strictEqual(rag.shloka, null);
   });
 
-  await test('RAG Retrieval: accurately fetches BG 2.47 for overwhelm & anxiety of results', () => {
-    const rag = retrieveGitaShlokaRAG(
+  await test('RAG Retrieval: accurately fetches BG 2.47 for overwhelm & anxiety of results', async () => {
+    const rag = await retrieveGitaShlokaRAG(
       'I feel overwhelmed by everything happening in my life. What should I do?'
     );
     assert.strictEqual(rag.isShlokaRelevant, true);
@@ -113,16 +113,16 @@ async function runTestSuite() {
     assert.ok(rag.shloka?.sanskrit.includes('कर्मण्येवाधिकारस्ते'));
   });
 
-  await test('RAG Retrieval: accurately fetches BG 3.8 for procrastination', () => {
-    const rag = retrieveGitaShlokaRAG('I keep procrastinating on my work and habits');
+  await test('RAG Retrieval: accurately fetches BG 3.8 for procrastination', async () => {
+    const rag = await retrieveGitaShlokaRAG('I keep procrastinating on my work and habits');
     assert.strictEqual(rag.isShlokaRelevant, true);
     assert.ok(rag.shloka);
     assert.strictEqual(rag.shloka?.id, 'BG3.8');
     assert.ok(rag.shloka?.sanskrit.includes('नियतं कुरु कर्म'));
   });
 
-  await test('RAG Retrieval: accurately fetches BG 2.20 for death & bereavement', () => {
-    const rag = retrieveGitaShlokaRAG(
+  await test('RAG Retrieval: accurately fetches BG 2.20 for death & bereavement', async () => {
+    const rag = await retrieveGitaShlokaRAG(
       'My grandmother passed away yesterday and I cannot stop crying. The grief is unbearable.'
     );
     assert.strictEqual(rag.isShlokaRelevant, true);
@@ -131,28 +131,56 @@ async function runTestSuite() {
     assert.ok(rag.shloka?.sanskrit.includes('न जायते म्रियते'));
   });
 
-  await test('RAG Retrieval: accurately fetches BG 12.13 for relationship conflict & arguments', () => {
-    const rag = retrieveGitaShlokaRAG('I had a terrible fight with my spouse and said things I regret');
+  await test('RAG Retrieval: accurately fetches BG 12.13 for relationship conflict & arguments', async () => {
+    const rag = await retrieveGitaShlokaRAG('I had a terrible fight with my spouse and said things I regret');
     assert.strictEqual(rag.isShlokaRelevant, true);
     assert.ok(rag.shloka);
     assert.strictEqual(rag.shloka?.id, 'BG12.13');
     assert.ok(rag.shloka?.sanskrit.includes('अद्वेष्टा सर्वभूतानां'));
   });
 
-  await test('RAG Conditional Relevance: does NOT force a shloka for casual greetings', () => {
-    const rag = retrieveGitaShlokaRAG('Hello, how are you?');
+  await test('RAG Conditional Relevance: does NOT force a shloka for casual greetings', async () => {
+    const rag = await retrieveGitaShlokaRAG('Hello, how are you?');
     assert.strictEqual(rag.isShlokaRelevant, false);
     assert.strictEqual(rag.shloka, null);
+
+    const ragShort = await retrieveGitaShlokaRAG('Hello');
+    assert.strictEqual(ragShort.isShlokaRelevant, false);
+    assert.strictEqual(ragShort.shloka, null);
   });
 
-  await test('RAG Conditional Relevance: does NOT force a shloka for meta or factual trivia', () => {
-    const rag1 = retrieveGitaShlokaRAG('What is your tech stack?');
+  await test('RAG Conditional Relevance: does NOT force a shloka for meta or factual trivia', async () => {
+    const rag1 = await retrieveGitaShlokaRAG('What is your tech stack?');
     assert.strictEqual(rag1.isShlokaRelevant, false);
     assert.strictEqual(rag1.shloka, null);
 
-    const rag2 = retrieveGitaShlokaRAG('What is the capital of France?');
+    const rag2 = await retrieveGitaShlokaRAG('What is the capital of France?');
     assert.strictEqual(rag2.isShlokaRelevant, false);
     assert.strictEqual(rag2.shloka, null);
+  });
+
+  await test('Four Critical Reviewer Verification Queries: correctly gate or retrieve verses', async () => {
+    // 1. "I feel confused about which career path I should take." -> relevant Gita verse (BG 3.35 Svadharma)
+    const q1 = await retrieveGitaShlokaRAG('I feel confused about which career path I should take.');
+    assert.strictEqual(q1.isShlokaRelevant, true);
+    assert.ok(q1.shloka);
+    assert.strictEqual(q1.shloka?.id, 'BG3.35');
+
+    // 2. "My mind keeps overthinking everything." -> relevant Gita verse (Mind stilling / Equanimity)
+    const q2 = await retrieveGitaShlokaRAG('My mind keeps overthinking everything.');
+    assert.strictEqual(q2.isShlokaRelevant, true);
+    assert.ok(q2.shloka);
+    assert.ok(['BG6.35', 'BG6.26', 'BG2.70', 'BG2.47'].includes(q2.shloka!.id));
+
+    // 3. "What is the capital of France?" -> NO Gita verse
+    const q3 = await retrieveGitaShlokaRAG('What is the capital of France?');
+    assert.strictEqual(q3.isShlokaRelevant, false);
+    assert.strictEqual(q3.shloka, null);
+
+    // 4. "Hello" -> NO Gita verse
+    const q4 = await retrieveGitaShlokaRAG('Hello');
+    assert.strictEqual(q4.isShlokaRelevant, false);
+    assert.strictEqual(q4.shloka, null);
   });
 
   // 4. Response Structure & Conversational Synthesis
@@ -238,6 +266,31 @@ async function runTestSuite() {
     assert.ok(all.length > 0);
   });
 
+  await test('Anonymous Session Isolation: isolates user histories by client sessionId', async () => {
+    const userASessionId = 'sess_test_user_alpha_' + Date.now();
+    const userBSessionId = 'sess_test_user_beta_' + Date.now();
+
+    const { category: catA, response: respA } = await runGuidanceEngine('User A question about focus');
+    const sessionA = await dbClient.createSession('User A question about focus', catA, respA, userASessionId);
+
+    const { category: catB, response: respB } = await runGuidanceEngine('User B question about calm');
+    const sessionB = await dbClient.createSession('User B question about calm', catB, respB, userBSessionId);
+
+    // Fetch User A history -> must include sessionA and NOT sessionB
+    const historyA = await dbClient.getAllSessions(userASessionId);
+    assert.ok(historyA.some((s) => s.id === sessionA.id));
+    assert.ok(!historyA.some((s) => s.id === sessionB.id));
+
+    // Fetch User B history -> must include sessionB and NOT sessionA
+    const historyB = await dbClient.getAllSessions(userBSessionId);
+    assert.ok(historyB.some((s) => s.id === sessionB.id));
+    assert.ok(!historyB.some((s) => s.id === sessionA.id));
+
+    // Clean up
+    await dbClient.deleteSessionById(sessionA.id, userASessionId);
+    await dbClient.deleteSessionById(sessionB.id, userBSessionId);
+  });
+
   // 6. Dynamic Situational Visual & Multi-Turn Dialogue
   await test('Situational Visual: generates custom bespoke visual scene on the fly', async () => {
     const { response } = await runGuidanceEngine('I feel confused about which path I should take in life.');
@@ -270,6 +323,57 @@ async function runTestSuite() {
 
     // Clean up
     await dbClient.deleteSessionById(session.id);
+  });
+
+  // 7. Vector & Embedding Pipeline (gemini-embedding-2, 768 dims)
+  await test('Embedding Service: validates strict 768-dimension vectors', async () => {
+    const { validateEmbedding } = await import('../server/services/embeddingService.ts');
+    
+    // Correct 768 dims
+    const valid768 = new Array(768).fill(0.123);
+    assert.strictEqual(validateEmbedding(valid768), true);
+
+    // Invalid dimensions
+    const invalid512 = new Array(512).fill(0.123);
+    assert.strictEqual(validateEmbedding(invalid512), false);
+
+    const invalid1536 = new Array(1536).fill(0.123);
+    assert.strictEqual(validateEmbedding(invalid1536), false);
+
+    // Invalid types
+    assert.strictEqual(validateEmbedding(null as any), false);
+    assert.strictEqual(validateEmbedding([]), false);
+    assert.strictEqual(validateEmbedding('not an array' as any), false);
+  });
+
+  await test('Enriched Document Builder: includes translation, wisdom, themes, situations, emotional relevance', async () => {
+    const { buildEnrichedGitaDocument, computeContentHash } = await import('../server/services/embeddingService.ts');
+    const { BHAGAVAD_GITA_CORPUS } = await import('../server/data/gitaDataset.ts');
+
+    const verse335 = BHAGAVAD_GITA_CORPUS.find(v => v.id === 'BG3.35');
+    assert.ok(verse335);
+
+    const enrichedDoc = buildEnrichedGitaDocument(verse335);
+    assert.ok(enrichedDoc.includes('BG3.35'));
+    assert.ok(enrichedDoc.includes('Chapter 3'));
+    assert.ok(enrichedDoc.includes('Karma Yoga'));
+    assert.ok(enrichedDoc.includes('svadharma') || enrichedDoc.includes('own duty') || enrichedDoc.includes('own path'));
+    assert.ok(enrichedDoc.includes('Themes:'));
+    assert.ok(enrichedDoc.includes('Emotional Resonance:'));
+    assert.ok(enrichedDoc.includes('Modern Psychological Application:'));
+
+    // Hash is deterministic
+    const hash1 = computeContentHash(enrichedDoc);
+    const hash2 = computeContentHash(enrichedDoc);
+    assert.strictEqual(hash1, hash2);
+    assert.strictEqual(hash1.length, 64); // SHA-256 hex string
+  });
+
+  await test('Idempotent Embedding Sync: handles offline / DB initialization safely', async () => {
+    const res = await dbClient.syncGitaEmbeddings();
+    assert.ok(res !== undefined);
+    assert.strictEqual(typeof res.synced, 'number');
+    assert.strictEqual(typeof res.skipped, 'number');
   });
 
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);

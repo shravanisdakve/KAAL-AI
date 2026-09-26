@@ -7,7 +7,8 @@ export const guidanceRouter = Router();
 
 guidanceRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { question, sessionId } = req.body;
+    const { question, sessionId, threadId } = req.body;
+    const headerSessionId = req.headers['x-session-id'] as string | undefined;
 
     // 1. Validate request
     if (question === undefined || question === null) {
@@ -32,28 +33,46 @@ guidanceRouter.post('/', async (req: Request, res: Response, next: NextFunction)
       );
     }
 
+    // Determine thread ID (if continuing multi-turn dialogue in same session)
+    let targetThreadId: number | null = null;
+    if (threadId !== undefined && threadId !== null) {
+      const num = Number(threadId);
+      if (!isNaN(num) && num > 0) targetThreadId = num;
+    } else if (sessionId !== undefined && sessionId !== null && typeof sessionId === 'number') {
+      targetThreadId = sessionId;
+    } else if (typeof sessionId === 'string' && /^\d+$/.test(sessionId)) {
+      targetThreadId = parseInt(sessionId, 10);
+    }
+
+    // Determine anonymous client session ID for history isolation
+    const clientSessionId: string | undefined =
+      headerSessionId ||
+      (typeof sessionId === 'string' && !/^\d+$/.test(sessionId) ? sessionId : undefined);
+
     // 2. If continuing an existing conversation thread, append turn
-    if (sessionId !== undefined && sessionId !== null) {
-      const numericSessionId = Number(sessionId);
-      if (!isNaN(numericSessionId) && numericSessionId > 0) {
-        const existingSession = await dbClient.getSessionById(numericSessionId);
-        if (existingSession) {
-          const { response } = await runGuidanceEngine(trimmedQuestion, existingSession);
-          const updatedSession = await dbClient.appendMessageToSession(
-            numericSessionId,
-            trimmedQuestion,
-            response
-          );
-          if (updatedSession) {
-            return res.status(200).json(updatedSession);
-          }
+    if (targetThreadId !== null) {
+      const existingSession = await dbClient.getSessionById(targetThreadId);
+      if (existingSession) {
+        const { response } = await runGuidanceEngine(trimmedQuestion, existingSession);
+        const updatedSession = await dbClient.appendMessageToSession(
+          targetThreadId,
+          trimmedQuestion,
+          response
+        );
+        if (updatedSession) {
+          return res.status(200).json(updatedSession);
         }
       }
     }
 
-    // 3. Otherwise start a new conversation session
+    // 3. Otherwise start a new conversation session associated with clientSessionId
     const { category, response } = await runGuidanceEngine(trimmedQuestion);
-    const savedSession = await dbClient.createSession(trimmedQuestion, category, response);
+    const savedSession = await dbClient.createSession(
+      trimmedQuestion,
+      category,
+      response,
+      clientSessionId
+    );
 
     return res.status(201).json(savedSession);
   } catch (err) {

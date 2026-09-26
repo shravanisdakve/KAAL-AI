@@ -4,10 +4,11 @@ import { dbClient } from '../db/client.ts';
 
 export const historyRouter = Router();
 
-// GET /api/history - Return all conversations newest first
-historyRouter.get('/', async (_req: Request, res: Response, next: NextFunction) => {
+// GET /api/history - Return conversations newest first (filtered by anonymous sessionId if provided)
+historyRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sessions = await dbClient.getAllSessions();
+    const sessionId = (req.query.sessionId as string) || (req.headers['x-session-id'] as string) || undefined;
+    const sessions = await dbClient.getAllSessions(sessionId);
     return res.json(sessions);
   } catch (err) {
     return next(err);
@@ -41,12 +42,13 @@ historyRouter.delete('/:id', async (req: Request, res: Response, next: NextFunct
   try {
     const rawId = req.params.id;
     const id = parseInt(rawId, 10);
+    const sessionId = (req.query.sessionId as string) || (req.headers['x-session-id'] as string) || undefined;
 
     if (isNaN(id) || id <= 0) {
       throw new AppError(400, 'INVALID_ID', 'Session ID must be a positive integer.');
     }
 
-    const deleted = await dbClient.deleteSessionById(id);
+    const deleted = await dbClient.deleteSessionById(id, sessionId);
 
     if (!deleted) {
       throw new AppError(404, 'NOT_FOUND', 'Requested guidance conversation was not found.');
@@ -58,11 +60,12 @@ historyRouter.delete('/:id', async (req: Request, res: Response, next: NextFunct
   }
 });
 
-// DELETE /api/history - Clear all conversation history
-historyRouter.delete('/', async (_req: Request, res: Response, next: NextFunction) => {
+// DELETE /api/history - Clear conversation history for this session (or all if unspecified)
+historyRouter.delete('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await dbClient.clearAllSessions();
-    return res.json({ success: true, message: 'All guidance history cleared successfully.' });
+    const sessionId = (req.query.sessionId as string) || (req.headers['x-session-id'] as string) || undefined;
+    await dbClient.clearAllSessions(sessionId);
+    return res.json({ success: true, message: 'Guidance history cleared successfully.' });
   } catch (err) {
     return next(err);
   }

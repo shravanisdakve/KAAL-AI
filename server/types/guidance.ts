@@ -115,6 +115,7 @@ export interface GuidanceExchange {
 
 export interface GuidanceSession {
   id: number;
+  sessionId?: string; // Anonymous client session identifier for history isolation
   question: string;
   category: GuidanceCategory;
   response: StructuredGuidanceResponse;
@@ -125,7 +126,8 @@ export interface GuidanceSession {
 
 export interface GuidanceRequest {
   question: string;
-  sessionId?: number;
+  sessionId?: string; // Anonymous client session ID (or legacy thread id)
+  threadId?: number; // Multi-turn thread conversation ID
 }
 
 export interface ApiErrorResponse {

@@ -1,8 +1,24 @@
 import { ApiError, GuidanceSession } from '../types/guidance.ts';
 
+/**
+ * Generates and stores a unique anonymous client session identifier in localStorage.
+ * Ensures that private user guidance history is isolated to this client browser
+ * without requiring high-friction login/authentication.
+ */
+export function getOrCreateClientSessionId(): string {
+  if (typeof window === 'undefined') return 'default-session';
+  const key = 'kaal_client_session_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = 'sess_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
 export async function askGuidance(
   question: string,
-  sessionId?: number | null
+  threadId?: number | null
 ): Promise<GuidanceSession> {
   const trimmed = question.trim();
   if (!trimmed) {
@@ -13,15 +29,19 @@ export async function askGuidance(
     } as ApiError;
   }
 
+  const clientSessionId = getOrCreateClientSessionId();
+
   try {
     const res = await fetch('/api/guidance', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-session-id': clientSessionId,
       },
       body: JSON.stringify({
         question: trimmed,
-        ...(sessionId ? { sessionId } : {}),
+        sessionId: clientSessionId,
+        ...(threadId ? { threadId } : {}),
       }),
     });
 
@@ -49,8 +69,13 @@ export async function askGuidance(
 }
 
 export async function fetchHistory(): Promise<GuidanceSession[]> {
+  const clientSessionId = getOrCreateClientSessionId();
   try {
-    const res = await fetch('/api/history');
+    const res = await fetch(`/api/history?sessionId=${encodeURIComponent(clientSessionId)}`, {
+      headers: {
+        'x-session-id': clientSessionId,
+      },
+    });
     const data = await res.json();
 
     if (!res.ok) {
@@ -75,8 +100,13 @@ export async function fetchHistory(): Promise<GuidanceSession[]> {
 }
 
 export async function fetchHistoryById(id: number): Promise<GuidanceSession> {
+  const clientSessionId = getOrCreateClientSessionId();
   try {
-    const res = await fetch(`/api/history/${id}`);
+    const res = await fetch(`/api/history/${id}`, {
+      headers: {
+        'x-session-id': clientSessionId,
+      },
+    });
     const data = await res.json();
 
     if (!res.ok) {
@@ -101,9 +131,13 @@ export async function fetchHistoryById(id: number): Promise<GuidanceSession> {
 }
 
 export async function deleteHistoryById(id: number): Promise<void> {
+  const clientSessionId = getOrCreateClientSessionId();
   try {
-    const res = await fetch(`/api/history/${id}`, {
+    const res = await fetch(`/api/history/${id}?sessionId=${encodeURIComponent(clientSessionId)}`, {
       method: 'DELETE',
+      headers: {
+        'x-session-id': clientSessionId,
+      },
     });
     const data = await res.json();
 
@@ -127,9 +161,13 @@ export async function deleteHistoryById(id: number): Promise<void> {
 }
 
 export async function clearAllHistory(): Promise<void> {
+  const clientSessionId = getOrCreateClientSessionId();
   try {
-    const res = await fetch('/api/history', {
+    const res = await fetch(`/api/history?sessionId=${encodeURIComponent(clientSessionId)}`, {
       method: 'DELETE',
+      headers: {
+        'x-session-id': clientSessionId,
+      },
     });
     const data = await res.json();
 

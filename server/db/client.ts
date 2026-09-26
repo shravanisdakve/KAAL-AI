@@ -1,4 +1,5 @@
 import pg from 'pg';
+import pgvector from 'pgvector/pg';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -7,8 +8,17 @@ import {
   GuidanceSession,
   StructuredGuidanceResponse,
 } from '../types/guidance.ts';
-import { CREATE_GUIDANCE_SESSIONS_TABLE_SQL } from './schema.ts';
+import {
+  CREATE_GUIDANCE_SESSIONS_TABLE_SQL,
+  CREATE_GITA_EMBEDDINGS_TABLE_SQL,
+} from './schema.ts';
 import { runGuidanceEngine, runGuidanceEngineSync } from '../services/guidanceEngine.ts';
+import {
+  embeddingService,
+  buildEnrichedGitaDocument,
+  computeContentHash,
+} from '../services/embeddingService.ts';
+import { BHAGAVAD_GITA_CORPUS } from '../data/gitaDataset.ts';
 
 const { Pool } = pg;
 
@@ -52,6 +62,7 @@ const INITIAL_SEED_QUESTIONS = [
 class DatabaseManager {
   private pool: pg.Pool | null = null;
   private isPostgresAvailable = false;
+  private isPgVectorAvailable = false;
   private localStore: GuidanceSession[] = [];
   private currentId = 1;
   private initialized = false;
@@ -91,8 +102,25 @@ class DatabaseManager {
         const client = await this.pool.connect();
         try {
           await client.query(CREATE_GUIDANCE_SESSIONS_TABLE_SQL);
+          // Migration: Ensure session_id column exists
+          await client.query('ALTER TABLE guidance_sessions ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);');
+          await client.query('CREATE INDEX IF NOT EXISTS idx_guidance_sessions_session_id ON guidance_sessions (session_id);');
           this.isPostgresAvailable = true;
-          console.log('✓ PostgreSQL connected and schema verified.');
+          console.log('✓ PostgreSQL connected and session schema verified.');
+
+          // Check if pgvector extension and gita_embeddings table are supported
+          try {
+            await client.query(CREATE_GITA_EMBEDDINGS_TABLE_SQL);
+            await pgvector.registerTypes(client);
+            this.isPgVectorAvailable = true;
+            console.log('✓ PostgreSQL pgvector extension and gita_embeddings table verified.');
+          } catch (vErr) {
+            this.isPgVectorAvailable = false;
+            console.warn(
+              'pgvector extension not active in this PostgreSQL instance. Operating with graceful degradation to deterministic fallback:',
+              (vErr as Error).message
+            );
+          }
 
           // Check if seed rows are needed in PostgreSQL
           const countRes = await client.query('SELECT COUNT(*) FROM guidance_sessions');
@@ -103,12 +131,20 @@ class DatabaseManager {
         } finally {
           client.release();
         }
+
+        // Idempotent background sync of Gita embeddings if pgvector and Gemini key are configured
+        if (this.isPgVectorAvailable && embeddingService.isConfigured()) {
+          this.syncGitaEmbeddings().catch((e) => {
+            console.warn('Gita embeddings background sync warning:', (e as Error).message);
+          });
+        }
       } catch (err) {
         console.warn(
           'PostgreSQL connection failed. Falling back to persistent local storage:',
           (err as Error).message
         );
         this.isPostgresAvailable = false;
+        this.isPgVectorAvailable = false;
         this.initLocalStore();
       }
     } else {
@@ -173,7 +209,8 @@ class DatabaseManager {
   public async createSession(
     question: string,
     category: GuidanceCategory,
-    response: StructuredGuidanceResponse
+    response: StructuredGuidanceResponse,
+    sessionId?: string
   ): Promise<GuidanceSession> {
     await this.init();
 
@@ -190,31 +227,29 @@ class DatabaseManager {
     };
 
     if (this.isPostgresAvailable && this.pool) {
-      try {
-        const res = await this.pool.query(
-          `INSERT INTO guidance_sessions (question, category, response, created_at)
-           VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-           RETURNING id, question, category, response, created_at`,
-          [question, category, JSON.stringify(payload)]
-        );
-        const row = res.rows[0];
-        const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
-        return {
-          id: row.id,
-          question: row.question,
-          category: row.category as GuidanceCategory,
-          response: parsed,
-          messages: parsed.messages || [initialExchange],
-          createdAt: new Date(row.created_at).toISOString(),
-        };
-      } catch (err) {
-        console.error('PostgreSQL insert error, falling back to local store:', err);
-      }
+      const res = await this.pool.query(
+        `INSERT INTO guidance_sessions (session_id, question, category, response, created_at)
+         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+         RETURNING id, session_id, question, category, response, created_at`,
+        [sessionId || null, question, category, JSON.stringify(payload)]
+      );
+      const row = res.rows[0];
+      const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
+      return {
+        id: row.id,
+        sessionId: row.session_id || undefined,
+        question: row.question,
+        category: row.category as GuidanceCategory,
+        response: parsed,
+        messages: parsed.messages || [initialExchange],
+        createdAt: new Date(row.created_at).toISOString(),
+      };
     }
 
-    // Local fallback
+    // Explicit degraded local fallback (when PostgreSQL is not configured / offline)
     const newSession: GuidanceSession = {
       id: this.currentId++,
+      sessionId: sessionId || undefined,
       question,
       category,
       response,
@@ -242,37 +277,34 @@ class DatabaseManager {
     };
 
     if (this.isPostgresAvailable && this.pool) {
-      try {
-        const existing = await this.getSessionById(id);
-        if (existing) {
-          const messages = existing.messages || [
-            {
-              id: `msg-${existing.id}-1`,
-              question: existing.question,
-              response: existing.response,
-              createdAt: existing.createdAt,
-            },
-          ];
-          messages.push(newExchange);
-          const payload = { ...response, messages };
+      const existing = await this.getSessionById(id);
+      if (!existing) return null;
 
-          await this.pool.query(
-            `UPDATE guidance_sessions SET response = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2`,
-            [JSON.stringify(payload), id]
-          );
+      const messages = existing.messages || [
+        {
+          id: `msg-${existing.id}-1`,
+          question: existing.question,
+          response: existing.response,
+          createdAt: existing.createdAt,
+        },
+      ];
+      messages.push(newExchange);
+      const payload = { ...response, messages };
 
-          return {
-            ...existing,
-            response,
-            messages,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-      } catch (err) {
-        console.error('PostgreSQL appendMessage error, falling back to local store:', err);
-      }
+      await this.pool.query(
+        `UPDATE guidance_sessions SET response = $1, created_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [JSON.stringify(payload), id]
+      );
+
+      return {
+        ...existing,
+        response,
+        messages,
+        updatedAt: new Date().toISOString(),
+      };
     }
 
+    // Degraded local store
     const session = this.localStore.find((s) => s.id === id);
     if (session) {
       if (!session.messages) {
@@ -295,42 +327,47 @@ class DatabaseManager {
     return null;
   }
 
-  public async getAllSessions(): Promise<GuidanceSession[]> {
+  public async getAllSessions(sessionId?: string): Promise<GuidanceSession[]> {
     await this.init();
 
     if (this.isPostgresAvailable && this.pool) {
-      try {
-        const res = await this.pool.query(
-          'SELECT id, question, category, response, created_at FROM guidance_sessions ORDER BY created_at DESC'
-        );
-        return res.rows.map((row) => {
-          const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
-          const messages =
-            parsed && Array.isArray(parsed.messages)
-              ? parsed.messages
-              : [
-                  {
-                    id: `msg-${row.id}-1`,
-                    question: row.question,
-                    response: parsed,
-                    createdAt: new Date(row.created_at).toISOString(),
-                  },
-                ];
-          return {
-            id: row.id,
-            question: row.question,
-            category: row.category as GuidanceCategory,
-            response: parsed,
-            messages,
-            createdAt: new Date(row.created_at).toISOString(),
-          };
-        });
-      } catch (err) {
-        console.error('PostgreSQL select error, using local store:', err);
-      }
+      const query = sessionId
+        ? 'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions WHERE session_id = $1 ORDER BY created_at DESC'
+        : 'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions ORDER BY created_at DESC';
+      const params = sessionId ? [sessionId] : [];
+      const res = await this.pool.query(query, params);
+
+      return res.rows.map((row) => {
+        const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
+        const messages =
+          parsed && Array.isArray(parsed.messages)
+            ? parsed.messages
+            : [
+                {
+                  id: `msg-${row.id}-1`,
+                  question: row.question,
+                  response: parsed,
+                  createdAt: new Date(row.created_at).toISOString(),
+                },
+              ];
+        return {
+          id: row.id,
+          sessionId: row.session_id || undefined,
+          question: row.question,
+          category: row.category as GuidanceCategory,
+          response: parsed,
+          messages,
+          createdAt: new Date(row.created_at).toISOString(),
+        };
+      });
     }
 
+    // Degraded local store
     return [...this.localStore]
+      .filter((item) => {
+        if (!sessionId) return true;
+        return item.sessionId === sessionId || !item.sessionId;
+      })
       .map((item) => {
         if (!item.messages || item.messages.length === 0) {
           item.messages = [
@@ -351,36 +388,33 @@ class DatabaseManager {
     await this.init();
 
     if (this.isPostgresAvailable && this.pool) {
-      try {
-        const res = await this.pool.query(
-          'SELECT id, question, category, response, created_at FROM guidance_sessions WHERE id = $1',
-          [id]
-        );
-        if (res.rows.length === 0) return null;
-        const row = res.rows[0];
-        const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
-        const messages =
-          parsed && Array.isArray(parsed.messages)
-            ? parsed.messages
-            : [
-                {
-                  id: `msg-${row.id}-1`,
-                  question: row.question,
-                  response: parsed,
-                  createdAt: new Date(row.created_at).toISOString(),
-                },
-              ];
-        return {
-          id: row.id,
-          question: row.question,
-          category: row.category as GuidanceCategory,
-          response: parsed,
-          messages,
-          createdAt: new Date(row.created_at).toISOString(),
-        };
-      } catch (err) {
-        console.error('PostgreSQL selectById error, checking local store:', err);
-      }
+      const res = await this.pool.query(
+        'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions WHERE id = $1',
+        [id]
+      );
+      if (res.rows.length === 0) return null;
+      const row = res.rows[0];
+      const parsed = typeof row.response === 'string' ? JSON.parse(row.response) : row.response;
+      const messages =
+        parsed && Array.isArray(parsed.messages)
+          ? parsed.messages
+          : [
+              {
+                id: `msg-${row.id}-1`,
+                question: row.question,
+                response: parsed,
+                createdAt: new Date(row.created_at).toISOString(),
+              },
+            ];
+      return {
+        id: row.id,
+        sessionId: row.session_id || undefined,
+        question: row.question,
+        category: row.category as GuidanceCategory,
+        response: parsed,
+        messages,
+        createdAt: new Date(row.created_at).toISOString(),
+      };
     }
 
     const found = this.localStore.find((item) => item.id === id);
@@ -400,43 +434,179 @@ class DatabaseManager {
     return null;
   }
 
-  public async deleteSessionById(id: number): Promise<boolean> {
+  public async deleteSessionById(id: number, sessionId?: string): Promise<boolean> {
     await this.init();
 
-    let deletedInPg = false;
     if (this.isPostgresAvailable && this.pool) {
-      try {
-        const res = await this.pool.query('DELETE FROM guidance_sessions WHERE id = $1', [id]);
-        deletedInPg = (res.rowCount ?? 0) > 0;
-      } catch (err) {
-        console.error('PostgreSQL deleteById error:', err);
-      }
+      const query = sessionId
+        ? 'DELETE FROM guidance_sessions WHERE id = $1 AND (session_id = $2 OR session_id IS NULL)'
+        : 'DELETE FROM guidance_sessions WHERE id = $1';
+      const params = sessionId ? [id, sessionId] : [id];
+      const res = await this.pool.query(query, params);
+      return (res.rowCount ?? 0) > 0;
     }
 
     const initialLen = this.localStore.length;
-    this.localStore = this.localStore.filter((item) => item.id !== id);
+    this.localStore = this.localStore.filter((item) => {
+      if (item.id !== id) return true;
+      if (sessionId && item.sessionId && item.sessionId !== sessionId) return true;
+      return false;
+    });
     const deletedInLocal = this.localStore.length < initialLen;
     if (deletedInLocal) {
       this.persistLocalStore();
     }
 
-    return deletedInPg || deletedInLocal;
+    return deletedInLocal;
   }
 
-  public async clearAllSessions(): Promise<boolean> {
+  public async clearAllSessions(sessionId?: string): Promise<boolean> {
     await this.init();
 
     if (this.isPostgresAvailable && this.pool) {
-      try {
+      if (sessionId) {
+        await this.pool.query('DELETE FROM guidance_sessions WHERE session_id = $1', [sessionId]);
+      } else {
         await this.pool.query('DELETE FROM guidance_sessions');
-      } catch (err) {
-        console.error('PostgreSQL clearAll error:', err);
       }
+      return true;
     }
 
-    this.localStore = [];
+    if (sessionId) {
+      this.localStore = this.localStore.filter((item) => item.sessionId !== sessionId);
+    } else {
+      this.localStore = [];
+    }
     this.persistLocalStore();
     return true;
+  }
+
+  /**
+   * Idempotent synchronization of Bhagavad Gita verse embeddings into PostgreSQL pgvector.
+   * Compares content hash of each enriched document to avoid unnecessary embedding API calls.
+   */
+  public async syncGitaEmbeddings(): Promise<{ synced: number; skipped: number }> {
+    await this.init();
+
+    if (!this.isPgVectorAvailable || !this.pool || !embeddingService.isConfigured()) {
+      return { synced: 0, skipped: 0 };
+    }
+
+    const client = await this.pool.connect();
+    let synced = 0;
+    let skipped = 0;
+
+    try {
+      await pgvector.registerTypes(client);
+
+      const existingRes = await client.query(
+        'SELECT verse_id, content_hash FROM gita_embeddings'
+      );
+      const existingMap = new Map<string, string>();
+      for (const row of existingRes.rows) {
+        existingMap.set(row.verse_id, row.content_hash);
+      }
+
+      for (const shloka of BHAGAVAD_GITA_CORPUS) {
+        const enrichedContent = buildEnrichedGitaDocument(shloka);
+        const currentHash = computeContentHash(enrichedContent);
+
+        // Idempotent: skip API call if identical content is already indexed
+        if (existingMap.get(shloka.id) === currentHash) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          const vector = await embeddingService.embedDocument(
+            enrichedContent,
+            `${shloka.id}: ${shloka.chapterName}`
+          );
+
+          const metadata = {
+            id: shloka.id,
+            chapter: shloka.chapter,
+            chapterName: shloka.chapterName,
+            verse: shloka.verse,
+            translation: shloka.translation,
+            themes: shloka.themes,
+            emotions: shloka.emotions,
+          };
+
+          await client.query(
+            `INSERT INTO gita_embeddings (verse_id, content, embedding, metadata, content_hash)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (verse_id) DO UPDATE SET
+               content = EXCLUDED.content,
+               embedding = EXCLUDED.embedding,
+               metadata = EXCLUDED.metadata,
+               content_hash = EXCLUDED.content_hash,
+               created_at = CURRENT_TIMESTAMP`,
+            [
+              shloka.id,
+              enrichedContent,
+              pgvector.toSql(vector),
+              JSON.stringify(metadata),
+              currentHash,
+            ]
+          );
+
+          synced++;
+        } catch (embErr) {
+          console.warn(`Failed embedding verse ${shloka.id}:`, (embErr as Error).message);
+        }
+      }
+
+      if (synced > 0) {
+        console.log(`✓ Synchronized ${synced} Gita verse embeddings with PostgreSQL pgvector.`);
+      }
+    } finally {
+      client.release();
+    }
+
+    return { synced, skipped };
+  }
+
+  /**
+   * Performs cosine distance vector similarity search on gita_embeddings table using pgvector (<=> operator).
+   */
+  public async searchSimilarGitaVerses(
+    queryVector: number[],
+    limit: number = 5
+  ): Promise<Array<{ verse_id: string; similarity: number; metadata: any }>> {
+    await this.init();
+
+    if (!this.isPgVectorAvailable || !this.pool) {
+      return [];
+    }
+
+    const client = await this.pool.connect();
+    try {
+      await pgvector.registerTypes(client);
+      const res = await client.query(
+        `SELECT verse_id, 1 - (embedding <=> $1) AS similarity, metadata
+         FROM gita_embeddings
+         WHERE embedding IS NOT NULL
+         ORDER BY embedding <=> $1
+         LIMIT $2`,
+        [pgvector.toSql(queryVector), limit]
+      );
+
+      return res.rows.map((row) => ({
+        verse_id: row.verse_id,
+        similarity: Math.max(0, Math.min(1.0, parseFloat(row.similarity))),
+        metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+      }));
+    } catch (err) {
+      console.warn('pgvector search error, falling back to deterministic search:', (err as Error).message);
+      return [];
+    } finally {
+      client.release();
+    }
+  }
+
+  public getIsPgVectorAvailable(): boolean {
+    return this.isPgVectorAvailable;
   }
 }
 

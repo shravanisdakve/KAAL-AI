@@ -1,5 +1,25 @@
 import { BHAGAVAD_GITA_CORPUS } from '../data/gitaDataset.ts';
 import { GitaShloka, NlpUnderstanding } from '../types/guidance.ts';
+import { embeddingService } from './embeddingService.ts';
+import { dbClient } from '../db/client.ts';
+
+export const GITA_RELEVANCE_THRESHOLD = 0.70;
+
+/**
+ * Unified Multi-Signal Reranking Formula (Total = 100%):
+ * - Semantic Vector Similarity (40%): Primary semantic recall from Gemini embedding / pgvector
+ * - Intent Alignment (25%): Deterministic intent alignment (life direction, stress, purpose, etc.)
+ * - Theme & Lexical Overlap (15%): Direct thematic and conceptual keyword resonance
+ * - Inferred Emotional Resonance (10%): Linguistic emotional cues
+ * - Contextual Specificity (10%): Match against specific life dilemmas and situations
+ */
+export const RAG_SCORING_WEIGHTS = {
+  SEMANTIC_VECTOR: 0.40,
+  INTENT_MATCH: 0.25,
+  THEME_MATCH: 0.15,
+  EMOTIONAL_MATCH: 0.10,
+  CONTEXTUAL_MATCH: 0.10,
+} as const;
 
 const STOP_WORDS = new Set([
   'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are',
@@ -126,7 +146,7 @@ const VERSE_SEMANTIC_VECTORS: Record<string, number[]> = {
   }),
   'BG4.40': createSparseVector({
     cynical_doubt_nihilism: 1.0,
-    faith_grace_protection: 0.4,
+    divine_protection_solace: 0.4,
   }),
   'BG6.5': createSparseVector({
     equanimity_balance_samatvam: 0.8,
@@ -177,7 +197,6 @@ const VERSE_SEMANTIC_VECTORS: Record<string, number[]> = {
   }),
   'BG9.22': createSparseVector({
     divine_protection_solace: 1.0,
-    faith_grace_protection: 0.9,
   }),
   'BG18.58': createSparseVector({
     divine_protection_solace: 0.9,
@@ -205,8 +224,10 @@ function createSparseVector(weights: Partial<Record<SemanticDimension, number>>)
 }
 
 /**
- * LAYER 1: NLP Understanding
- * Extracts emotions, intent, topics, and psychological needs from the user's question.
+ * LAYER 1: NLP Understanding & Linguistic Signal Inference
+ * Infers emotional context, intent, topics, and psychological needs from linguistic cues.
+ * Note: Emotions are inferred linguistic signals to guide conversational warmth,
+ * not clinical assertions of certainty about the user's emotional state.
  */
 export function extractNlpUnderstanding(query: string): NlpUnderstanding {
   const lower = query.toLowerCase();
@@ -444,66 +465,30 @@ export function isCasualOrNonSpiritualQuery(query: string): boolean {
 }
 
 /**
- * FULL HYBRID RAG + NLP RELEVANCE PIPELINE
- * 1. NLP Understanding (Intent, Emotion, Topic, Needs)
- * 2. Query Enrichment
- * 3. Dense Vector Search (Cosine Similarity across 24 semantic dimensions)
- * 4. Lexical Search (Keyword & Concept Overlap)
- * 5. Top 5 Candidate Generation
- * 6. Contextual Reranking with Multi-Factor Scoring
- * 7. Relevance Threshold Gating (finalScore >= 0.72)
+ * FULL HYBRID RAG + RELEVANCE PIPELINE
+ * 1. NLP Understanding (Intent, Inferred Emotion, Topic, Needs)
+ * 2. Exclusion Gate (Casual, meta, household chores, or factual trivia)
+ * 3. Primary Semantic Vector Search (Gemini 768-dim Embeddings via PostgreSQL pgvector)
+ * 4. Graceful Degradation (Deterministic 24-dim dense projection when DB is offline)
+ * 5. Lexical & Thematic Matching (Keyword & Concept Overlap)
+ * 6. Multi-Factor Contextual Reranking (40% Semantic, 25% Intent, 15% Theme, 10% Emotion, 10% Context)
+ * 7. Relevance Threshold Gating (GITA_RELEVANCE_THRESHOLD = 0.70)
  */
-export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
-  const nlpUnderstanding = extractNlpUnderstanding(query);
-  const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
-
-  // 1. Strict Exclusion Gate: Casual, meta, household chores, or factual trivia
-  if (isCasualOrNonSpiritualQuery(query)) {
-    return {
-      shloka: null,
-      isShlokaRelevant: false,
-      detectedEmotion,
-      relevanceScore: 0,
-      matchedThemes: [],
-      nlpUnderstanding,
-      retrievalMethod: 'hybrid',
-      semanticScore: 0,
-      keywordScore: 0,
-      contextScore: 0,
-      finalScore: 0,
-      candidateRankings: [],
-    };
-  }
-
-  const queryTokens = tokenizeQuery(query);
-  const queryVector = embedQueryVector(query, nlpUnderstanding);
-
-  // 2. Hybrid Retrieval: Score all verses and retrieve Top 5 Candidates
-  const scoredCandidates = BHAGAVAD_GITA_CORPUS.map((shloka) => {
-    const verseVector = VERSE_SEMANTIC_VECTORS[shloka.id] || createSparseVector({});
-    const semanticSim = cosineSimilarity(queryVector, verseVector);
-    const lexicalScore = computeLexicalScore(queryTokens, shloka);
-
-    const hybridCandidateScore = 0.60 * semanticSim + 0.40 * lexicalScore;
-
-    return {
-      shloka,
-      semanticSim,
-      lexicalScore,
-      hybridCandidateScore,
-    };
-  });
-
-  // Sort and take Top 5
-  scoredCandidates.sort((a, b) => b.hybridCandidateScore - a.hybridCandidateScore);
-  const top5 = scoredCandidates.slice(0, 5);
-
-  // 3. LAYER 5: Contextual Reranker with Multi-Factor Scoring
-  // finalScore = (semanticSimilarity * 0.40) + (intentMatch * 0.25) + (themeMatch * 0.15) + (emotionalMatch * 0.10) + (contextualMatch * 0.10)
-  const reranked = top5.map((candidate) => {
+/**
+ * Multi-factor contextual reranker.
+ * Balances primary semantic vector similarity with intent alignment,
+ * theme overlap, emotional resonance, and contextual specificity.
+ */
+function rerankCandidates(
+  candidates: Array<{ shloka: GitaShloka; semanticSim: number; lexicalScore: number }>,
+  nlpUnderstanding: NlpUnderstanding,
+  query: string,
+  detectedEmotion: string
+): RAGRetrievalResult {
+  const reranked = candidates.map((candidate) => {
     const { shloka, semanticSim, lexicalScore } = candidate;
 
-    // Intent Match
+    // 1. Intent Match
     let intentMatch = 0.2;
     if (nlpUnderstanding.intent === 'life_direction') {
       if (shloka.id === 'BG3.35') intentMatch = 1.0;
@@ -524,15 +509,15 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
       if (shloka.id === 'BG6.35' || shloka.id === 'BG6.26' || shloka.id === 'BG6.19') intentMatch = 1.0;
     }
 
-    // Theme Match
+    // 2. Theme Match
     const themeOverlap = shloka.themes.filter((t) => nlpUnderstanding.topics.includes(t.toLowerCase())).length;
     const themeMatch = Math.min(1.0, themeOverlap > 0 ? 0.8 + 0.2 * themeOverlap : lexicalScore);
 
-    // Emotional Match
+    // 3. Emotional Match
     const emoOverlap = shloka.emotions.filter((e) => nlpUnderstanding.emotions.includes(e.toLowerCase())).length;
     const emotionalMatch = Math.min(1.0, emoOverlap > 0 ? 0.9 : 0.3);
 
-    // Contextual Match
+    // 4. Contextual Match
     let contextualMatch = 0.3;
     const normalizedQ = query.toLowerCase();
     for (const ctx of shloka.contexts || []) {
@@ -542,15 +527,15 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
       }
     }
 
-    // Multi-factor formula
+    // 5. Multi-factor formula with configurable weights
     let finalScore =
-      semanticSim * 0.40 +
-      intentMatch * 0.25 +
-      themeMatch * 0.15 +
-      emotionalMatch * 0.10 +
-      contextualMatch * 0.10;
+      semanticSim * RAG_SCORING_WEIGHTS.SEMANTIC_VECTOR +
+      intentMatch * RAG_SCORING_WEIGHTS.INTENT_MATCH +
+      themeMatch * RAG_SCORING_WEIGHTS.THEME_MATCH +
+      emotionalMatch * RAG_SCORING_WEIGHTS.EMOTIONAL_MATCH +
+      contextualMatch * RAG_SCORING_WEIGHTS.CONTEXTUAL_MATCH;
 
-    // Apply explicit caution penalty if verse explicitly warns against this context
+    // Apply explicit caution penalty if verse warns against this context
     if (shloka.id === 'BG4.40' && nlpUnderstanding.intent === 'life_direction') {
       finalScore *= 0.4; // Harsh penalty: BG4.40 must never hijack life direction queries
     }
@@ -566,15 +551,12 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
     };
   });
 
-  // Sort reranked candidates by finalScore
   reranked.sort((a, b) => b.finalScore - a.finalScore);
 
   const bestCandidate = reranked[0];
   const candidateRankings = reranked.map((c) => ({ id: c.shloka.id, finalScore: c.finalScore }));
 
-  // LAYER 6: Relevance Threshold Gating
-  // Threshold = 0.70 (Strict: only genuinely relevant teachings pass)
-  const isShlokaRelevant = bestCandidate && bestCandidate.finalScore >= 0.70;
+  const isShlokaRelevant = bestCandidate && bestCandidate.finalScore >= GITA_RELEVANCE_THRESHOLD;
 
   return {
     shloka: isShlokaRelevant ? bestCandidate.shloka : null,
@@ -590,4 +572,118 @@ export function retrieveGitaShlokaRAG(query: string): RAGRetrievalResult {
     finalScore: bestCandidate ? bestCandidate.finalScore : 0,
     candidateRankings,
   };
+}
+
+/**
+ * Synchronous / Deterministic RAG Retrieval fallback.
+ * Uses dense semantic concept projections + lexical matching for instant offline execution.
+ */
+export function retrieveGitaShlokaRAGSync(query: string): RAGRetrievalResult {
+  const nlpUnderstanding = extractNlpUnderstanding(query);
+  const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
+
+  if (isCasualOrNonSpiritualQuery(query)) {
+    return {
+      shloka: null,
+      isShlokaRelevant: false,
+      detectedEmotion,
+      relevanceScore: 0,
+      matchedThemes: [],
+      nlpUnderstanding,
+      retrievalMethod: 'hybrid',
+      semanticScore: 0,
+      keywordScore: 0,
+      contextScore: 0,
+      finalScore: 0,
+      candidateRankings: [],
+    };
+  }
+
+  const queryTokens = tokenizeQuery(query);
+  const queryVector = embedQueryVector(query, nlpUnderstanding);
+
+  const scoredCandidates = BHAGAVAD_GITA_CORPUS.map((shloka) => {
+    const verseVector = VERSE_SEMANTIC_VECTORS[shloka.id] || createSparseVector({});
+    const semanticSim = cosineSimilarity(queryVector, verseVector);
+    const lexicalScore = computeLexicalScore(queryTokens, shloka);
+    const hybridCandidateScore = 0.60 * semanticSim + 0.40 * lexicalScore;
+
+    return {
+      shloka,
+      semanticSim,
+      lexicalScore,
+      hybridCandidateScore,
+    };
+  });
+
+  scoredCandidates.sort((a, b) => b.hybridCandidateScore - a.hybridCandidateScore);
+  const top5 = scoredCandidates.slice(0, 5);
+
+  return rerankCandidates(top5, nlpUnderstanding, query, detectedEmotion);
+}
+
+/**
+ * PRIMARY HYBRID RAG RETRIEVAL PIPELINE
+ * 1. NLP Understanding (Intent, Emotion, Topics, Needs)
+ * 2. Exclusion Gate (Casual, meta, household chores, or factual trivia)
+ * 3. Primary Semantic Vector Search via PostgreSQL/pgvector + Gemini 768-dim Embeddings
+ * 4. Multi-Factor Reranker (Semantic Vector + Intent + Theme + Emotion + Context)
+ * 5. Strict Relevance Threshold Gating (GITA_RELEVANCE_THRESHOLD = 0.70)
+ * 6. Graceful Deterministic Fallback if pgvector or embeddings API is unavailable
+ */
+export async function retrieveGitaShlokaRAG(query: string): Promise<RAGRetrievalResult> {
+  const nlpUnderstanding = extractNlpUnderstanding(query);
+  const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
+
+  if (isCasualOrNonSpiritualQuery(query)) {
+    return {
+      shloka: null,
+      isShlokaRelevant: false,
+      detectedEmotion,
+      relevanceScore: 0,
+      matchedThemes: [],
+      nlpUnderstanding,
+      retrievalMethod: 'hybrid',
+      semanticScore: 0,
+      keywordScore: 0,
+      contextScore: 0,
+      finalScore: 0,
+      candidateRankings: [],
+    };
+  }
+
+  // Check if pgvector and Gemini embedding service are active
+  if (embeddingService.isConfigured() && dbClient.getIsPgVectorAvailable()) {
+    try {
+      const queryEmbedding = await embeddingService.embedQuery(query);
+      const vectorMatches = await dbClient.searchSimilarGitaVerses(queryEmbedding, 5);
+
+      if (vectorMatches && vectorMatches.length > 0) {
+        const queryTokens = tokenizeQuery(query);
+        const corpusMap = new Map(BHAGAVAD_GITA_CORPUS.map((s) => [s.id, s]));
+
+        const candidates = vectorMatches
+          .map((vm) => {
+            const shloka = corpusMap.get(vm.verse_id);
+            if (!shloka) return null;
+            const lexicalScore = computeLexicalScore(queryTokens, shloka);
+            return {
+              shloka,
+              semanticSim: vm.similarity,
+              lexicalScore,
+            };
+          })
+          .filter((c): c is { shloka: GitaShloka; semanticSim: number; lexicalScore: number } => c !== null);
+
+        if (candidates.length > 0) {
+          return rerankCandidates(candidates, nlpUnderstanding, query, detectedEmotion);
+        }
+      }
+    } catch (vErr) {
+      console.warn('pgvector retrieval encountered an issue, seamlessly using deterministic fallback:', (vErr as Error).message);
+    }
+  }
+
+  // Deterministic Fallback
+  return retrieveGitaShlokaRAGSync(query);
 }
