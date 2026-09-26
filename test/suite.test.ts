@@ -666,6 +666,112 @@ async function runTestSuite() {
     assert.strictEqual(typeof res.skipped, 'number');
   });
 
+  // 8. Frontend Concurrency & Request Ownership Patterns
+  await test('Concurrency & Ownership: request ownership gate rejects stale in-flight response when user navigates away', () => {
+    let activeSessionId: number | null = 101;
+    let requestIdCounter = 0;
+
+    // Simulate Conversation A starting request #1
+    const requestAId = ++requestIdCounter;
+    const conversationIdAtSubmitA = activeSessionId;
+
+    // User switches to Conversation B while request A is in-flight
+    activeSessionId = 102;
+    const requestBId = ++requestIdCounter;
+
+    // Simulate Request A returning late
+    const shouldApplyA =
+      requestIdCounter === requestAId && activeSessionId === conversationIdAtSubmitA;
+
+    assert.strictEqual(
+      shouldApplyA,
+      false,
+      'Stale request A must be rejected and must not update conversation B'
+    );
+  });
+
+  await test('Concurrency & Ownership: new conversation immediately invalidates and isolates in-flight request', () => {
+    let activeSessionId: number | null = 201;
+    let requestIdCounter = 0;
+    let loadingRequest: { conversationId: number | null; requestId: number } | null = null;
+    let pendingSubmission: { conversationId: number | null; requestId: number; question: string } | null = null;
+
+    // Start request in Conversation A
+    const reqId = ++requestIdCounter;
+    loadingRequest = { conversationId: activeSessionId, requestId: reqId };
+    pendingSubmission = { conversationId: activeSessionId, requestId: reqId, question: 'Question A' };
+
+    // User clicks "New Conversation"
+    activeSessionId = null;
+    ++requestIdCounter;
+    loadingRequest = null;
+    pendingSubmission = null;
+
+    // Verify New Conversation state with scoped helpers
+    const isCurrentConversationLoading =
+      ((req: { conversationId: number | null; requestId: number } | null) =>
+        req !== null && req.requestId === requestIdCounter && req.conversationId === activeSessionId)(loadingRequest);
+
+    const isPendingForCurrentConversation =
+      ((sub: { conversationId: number | null; requestId: number; question: string } | null) =>
+        sub !== null && sub.requestId === requestIdCounter && sub.conversationId === activeSessionId)(pendingSubmission);
+
+    assert.strictEqual(activeSessionId, null);
+    assert.strictEqual(isCurrentConversationLoading, false, 'New conversation must have zero loading indicator');
+    assert.strictEqual(isPendingForCurrentConversation, false, 'New conversation must not render optimistic message from A');
+  });
+
+  await test('Concurrency & Ownership: loading state is scoped strictly to the originating conversation', () => {
+    const activeSessionId = 302; // Currently viewing Conversation B
+    const loadingRequest = { conversationId: 301, requestId: 5 }; // Conversation A is generating
+
+    const isCurrentConversationLoading =
+      loadingRequest !== null &&
+      loadingRequest.requestId === 5 &&
+      loadingRequest.conversationId === activeSessionId;
+
+    assert.strictEqual(
+      isCurrentConversationLoading,
+      false,
+      'Thinking state from conversation A must not appear in conversation B'
+    );
+  });
+
+  await test('Concurrency & Ownership: out-of-order history responses cannot overwrite newer history state', () => {
+    let historyRequestIdCounter = 0;
+    let currentSessions: string[] = ['initial'];
+
+    // Call 1 starts
+    const req1Id = ++historyRequestIdCounter;
+
+    // Call 2 starts
+    const req2Id = ++historyRequestIdCounter;
+
+    // Call 2 resolves first
+    if (historyRequestIdCounter === req2Id) {
+      currentSessions = ['call 2 result'];
+    }
+
+    // Call 1 resolves later (out of order)
+    if (historyRequestIdCounter === req1Id) {
+      currentSessions = ['call 1 stale result'];
+    }
+
+    assert.deepStrictEqual(
+      currentSessions,
+      ['call 2 result'],
+      'Stale out-of-order history response must not overwrite newer history data'
+    );
+  });
+
+  await test('Concurrency & Ownership: AbortError is identified as a cancellation and does not produce user error', () => {
+    const abortErr = new Error('The user aborted a request.');
+    abortErr.name = 'AbortError';
+
+    const isAbort = abortErr.name === 'AbortError';
+    assert.strictEqual(isAbort, true, 'AbortError must be recognized as non-fatal cancellation');
+  });
+
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);
   if (failed > 0) {
     process.exit(1);

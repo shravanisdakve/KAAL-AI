@@ -17,15 +17,34 @@ import {
   clearAllHistory,
 } from './services/api.ts';
 
+interface LoadingRequest {
+  conversationId: number | null;
+  requestId: number;
+}
+
+interface PendingSubmission {
+  conversationId: number | null;
+  requestId: number;
+  question: string;
+}
+
 export default function App() {
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
   const [activeSession, setActiveSession] = useState<GuidanceSession | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
-  // UI state
-  const [isLoading, setIsLoading] = useState(false);
+  // Synchronized ref for active session ID to prevent stale closures in async callbacks
+  const activeSessionIdRef = useRef<number | null>(null);
+
+  // Request ownership and concurrency refs
+  const requestIdRef = useRef(0);
+  const guidanceAbortControllerRef = useRef<AbortController | null>(null);
+  const historyRequestIdRef = useRef(0);
+
+  // Scoped UI state
+  const [loadingRequest, setLoadingRequest] = useState<LoadingRequest | null>(null);
+  const [pendingSubmission, setPendingSubmission] = useState<PendingSubmission | null>(null);
   const [currentError, setCurrentError] = useState<ApiError | null>(null);
-  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
 
   // Sidebar responsive & collapse states
   const [isMobile, setIsMobile] = useState<boolean>(() => {
@@ -41,6 +60,28 @@ export default function App() {
 
   // Scroll ref
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Abort any active in-flight guidance request
+  const abortActiveGuidance = () => {
+    if (guidanceAbortControllerRef.current) {
+      guidanceAbortControllerRef.current.abort();
+      guidanceAbortControllerRef.current = null;
+    }
+  };
+
+  // Safe history refresh that ignores stale out-of-order responses
+  const refreshHistory = async () => {
+    const reqId = ++historyRequestIdRef.current;
+    try {
+      const updatedHistory = await fetchHistory();
+      if (historyRequestIdRef.current === reqId) {
+        setSessions(updatedHistory);
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.warn('Could not refresh history:', err);
+    }
+  };
 
   // Check window size for mobile view
   useEffect(() => {
@@ -70,19 +111,26 @@ export default function App() {
 
   // Initial load: fetch history from backend API
   useEffect(() => {
+    const controller = new AbortController();
     async function loadInitialData() {
       try {
-        const historyData = await fetchHistory();
+        const historyData = await fetchHistory(controller.signal);
         setSessions(historyData);
         if (historyData.length > 0) {
           setActiveSession(historyData[0]);
           setActiveSessionId(historyData[0].id);
+          activeSessionIdRef.current = historyData[0].id;
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
         console.warn('Could not load initial history from API:', err);
       }
     }
     loadInitialData();
+    return () => {
+      controller.abort();
+      abortActiveGuidance();
+    };
   }, []);
 
   // Smooth scroll helper
@@ -92,108 +140,218 @@ export default function App() {
     }, 100);
   };
 
-  // Select a session from history
-  const handleSelectSession = async (id: number) => {
-    setCurrentError(null);
-    setActiveSessionId(id);
-    setIsMobileSidebarOpen(false);
-
-    try {
-      const session = await fetchHistoryById(id);
-      setActiveSession(session);
-      scrollToBottom();
-    } catch (err) {
-      console.error('Failed to load session:', err);
-      const fallback = sessions.find((s) => s.id === id);
-      if (fallback) {
-        setActiveSession(fallback);
-      } else {
-        setCurrentError(err as ApiError);
-      }
+  // Select a session from history (Instant local navigation; zero network wait)
+  const handleSelectSession = (id: number) => {
+    if (id === activeSessionIdRef.current) {
+      if (isMobile) setIsMobileSidebarOpen(false);
+      return;
     }
+
+    // 1. Abort any active guidance request from previous conversation
+    abortActiveGuidance();
+
+    // 2. Invalidate request ID to ensure no in-flight response can mutate this view
+    const newReqId = ++requestIdRef.current;
+
+    // 3. Immediately switch active session pointers and clear state
+    setActiveSessionId(id);
+    activeSessionIdRef.current = id;
+    setCurrentError(null);
+    setLoadingRequest(null);
+    setPendingSubmission(null);
+    if (isMobile) setIsMobileSidebarOpen(false);
+
+    // 4. Instant local cache lookup - renders immediately without network latency
+    const cached = sessions.find((s) => s.id === id);
+    if (cached) {
+      setActiveSession(cached);
+      scrollToBottom();
+      return;
+    }
+
+    // 5. Fallback fetch only if item is not found in memory (with stale protection)
+    fetchHistoryById(id)
+      .then((session) => {
+        if (activeSessionIdRef.current === id && requestIdRef.current === newReqId) {
+          setActiveSession(session);
+          scrollToBottom();
+        }
+      })
+      .catch((err) => {
+        if (activeSessionIdRef.current === id && requestIdRef.current === newReqId) {
+          setCurrentError(err as ApiError);
+        }
+      });
   };
 
-  // Start a new conversation
+  // Start a new conversation (Instant local UI action; zero network wait)
   const handleNewConversation = () => {
+    // 1. Abort any active guidance request
+    abortActiveGuidance();
+
+    // 2. Invalidate request generation so in-flight responses cannot apply
+    ++requestIdRef.current;
+
+    // 3. Clear active session pointers
     setActiveSession(null);
     setActiveSessionId(null);
+    activeSessionIdRef.current = null;
+
+    // 4. Clear loading and pending state
+    setLoadingRequest(null);
+    setPendingSubmission(null);
     setCurrentError(null);
-    setPendingQuestion(null);
-    setIsMobileSidebarOpen(false);
+
+    if (isMobile) setIsMobileSidebarOpen(false);
   };
 
   // Delete a single conversation from history
   const handleDeleteSession = async (id: number) => {
+    // If the deleted session was actively generating guidance, abort it
+    if (activeSessionIdRef.current === id) {
+      abortActiveGuidance();
+      ++requestIdRef.current;
+      setLoadingRequest(null);
+      setPendingSubmission(null);
+    }
+
     // Optimistic UI update
     const remaining = sessions.filter((s) => s.id !== id);
     setSessions(remaining);
 
-    if (activeSessionId === id) {
+    if (activeSessionIdRef.current === id) {
       if (remaining.length > 0) {
         setActiveSession(remaining[0]);
         setActiveSessionId(remaining[0].id);
+        activeSessionIdRef.current = remaining[0].id;
       } else {
         setActiveSession(null);
         setActiveSessionId(null);
+        activeSessionIdRef.current = null;
       }
     }
 
     try {
       await deleteHistoryById(id);
-      const updatedHistory = await fetchHistory();
-      setSessions(updatedHistory);
+      refreshHistory();
     } catch (err) {
       console.error('Failed to delete session:', err);
+      refreshHistory();
     }
   };
 
   // Clear all conversation history
   const handleClearAllHistory = async () => {
+    abortActiveGuidance();
+    ++requestIdRef.current;
+    setLoadingRequest(null);
+    setPendingSubmission(null);
+
     // Optimistic UI update
     setSessions([]);
     setActiveSession(null);
     setActiveSessionId(null);
+    activeSessionIdRef.current = null;
 
     try {
       await clearAllHistory();
-      const updatedHistory = await fetchHistory();
-      setSessions(updatedHistory);
+      refreshHistory();
     } catch (err) {
       console.error('Failed to clear history:', err);
+      refreshHistory();
     }
   };
 
-  // Handle Question Submission to POST /api/guidance
+  // Handle Question Submission to POST /api/guidance with strict request ownership
   const handleSubmitQuestion = async (question: string) => {
+    // 1. Abort any previous guidance request
+    abortActiveGuidance();
+
+    // 2. Create new AbortController for this guidance request
+    const controller = new AbortController();
+    guidanceAbortControllerRef.current = controller;
+
+    // 3. Capture exact request ID and conversation context at moment of submission
+    const requestId = ++requestIdRef.current;
+    const conversationIdAtSubmit = activeSessionIdRef.current;
+
+    // 4. Set scoped loading and optimistic user message
     setCurrentError(null);
-    setIsLoading(true);
-    setPendingQuestion(question);
+    setLoadingRequest({ conversationId: conversationIdAtSubmit, requestId });
+    setPendingSubmission({ conversationId: conversationIdAtSubmit, requestId, question });
     scrollToBottom();
 
     try {
-      // Pass activeSessionId if continuing an existing chat thread
-      const updatedSession = await askGuidance(question, activeSessionId);
-      setActiveSession(updatedSession);
-      setActiveSessionId(updatedSession.id);
-      setPendingQuestion(null);
+      const updatedSession = await askGuidance(
+        question,
+        conversationIdAtSubmit,
+        controller.signal
+      );
 
-      // Refresh history list so sidebar updates
-      const updatedHistory = await fetchHistory();
-      setSessions(updatedHistory);
+      // 5. Strict ownership verification: apply ONLY if user is still on this exact request & conversation
+      if (
+        requestIdRef.current === requestId &&
+        activeSessionIdRef.current === conversationIdAtSubmit
+      ) {
+        setActiveSession(updatedSession);
+        setActiveSessionId(updatedSession.id);
+        activeSessionIdRef.current = updatedSession.id;
+        setLoadingRequest(null);
+        setPendingSubmission(null);
 
-      scrollToBottom();
-    } catch (err) {
-      console.error('Error submitting question:', err);
-      setCurrentError(err as ApiError);
+        // Optimistically update sessions list immediately
+        setSessions((prev) => {
+          const idx = prev.findIndex((s) => s.id === updatedSession.id);
+          if (idx >= 0) {
+            const copy = [...prev];
+            copy[idx] = updatedSession;
+            return copy;
+          }
+          return [updatedSession, ...prev];
+        });
+
+        refreshHistory();
+        scrollToBottom();
+      } else {
+        // User navigated away; safely update sessions cache in background
+        setSessions((prev) => {
+          const idx = prev.findIndex((s) => s.id === updatedSession.id);
+          if (idx >= 0) {
+            const copy = [...prev];
+            copy[idx] = updatedSession;
+            return copy;
+          }
+          return [updatedSession, ...prev];
+        });
+        refreshHistory();
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || controller.signal.aborted) {
+        // Request was cancelled due to conversation switch or new chat; silently ignore
+        return;
+      }
+
+      // Only display error if user is still on this exact request and conversation
+      if (
+        requestIdRef.current === requestId &&
+        activeSessionIdRef.current === conversationIdAtSubmit
+      ) {
+        console.error('Error submitting question:', err);
+        setCurrentError(err as ApiError);
+        setLoadingRequest(null);
+        setPendingSubmission(null);
+      }
     } finally {
-      setIsLoading(false);
+      if (guidanceAbortControllerRef.current === controller) {
+        guidanceAbortControllerRef.current = null;
+      }
     }
   };
 
   // Retry action for error state
   const handleRetry = () => {
-    if (pendingQuestion) {
-      handleSubmitQuestion(pendingQuestion);
+    if (pendingSubmission) {
+      handleSubmitQuestion(pendingSubmission.question);
     } else if (activeSession) {
       handleSubmitQuestion(activeSession.question);
     }
@@ -209,6 +367,17 @@ export default function App() {
       return '10:42 AM';
     }
   };
+
+  // Computed scoped loading and pending flags for the current view
+  const isCurrentConversationLoading =
+    loadingRequest !== null &&
+    loadingRequest.requestId === requestIdRef.current &&
+    loadingRequest.conversationId === activeSessionId;
+
+  const isPendingForCurrentConversation =
+    pendingSubmission !== null &&
+    pendingSubmission.requestId === requestIdRef.current &&
+    pendingSubmission.conversationId === activeSessionId;
 
   return (
     <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#fafbfa] text-gray-900 font-sans antialiased">
@@ -273,16 +442,16 @@ export default function App() {
                 </>
               )
             ) : (
-              !isLoading && (
+              !isCurrentConversationLoading && (
                 <EmptyState onSelectPrompt={(prompt) => handleSubmitQuestion(prompt)} />
               )
             )}
 
             {/* Dynamic live loading during active query */}
-            {isLoading && (
+            {isCurrentConversationLoading && (
               <>
-                {pendingQuestion && (
-                  <UserMessage question={pendingQuestion} timestamp="Just now" />
+                {isPendingForCurrentConversation && pendingSubmission && (
+                  <UserMessage question={pendingSubmission.question} timestamp="Just now" />
                 )}
                 <LoadingState />
               </>
@@ -301,7 +470,7 @@ export default function App() {
         <div className="shrink-0 bg-[#fafbfa]/90 backdrop-blur-xs border-t border-gray-100">
           <Composer
             onSubmit={handleSubmitQuestion}
-            isLoading={isLoading}
+            isLoading={isCurrentConversationLoading}
             onClearError={() => setCurrentError(null)}
           />
         </div>

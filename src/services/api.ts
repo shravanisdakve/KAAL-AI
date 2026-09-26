@@ -18,7 +18,8 @@ export function getOrCreateClientSessionId(): string {
 
 export async function askGuidance(
   question: string,
-  threadId?: number | null
+  threadId?: number | null,
+  signal?: AbortSignal
 ): Promise<GuidanceSession> {
   const trimmed = question.trim();
   if (!trimmed) {
@@ -43,6 +44,7 @@ export async function askGuidance(
         sessionId: clientSessionId,
         ...(threadId ? { threadId } : {}),
       }),
+      signal,
     });
 
     const data = await res.json();
@@ -57,6 +59,11 @@ export async function askGuidance(
 
     return data as GuidanceSession;
   } catch (err: unknown) {
+    if ((err as any)?.name === 'AbortError' || signal?.aborted) {
+      const abortError = new Error('Guidance request was aborted');
+      abortError.name = 'AbortError';
+      throw abortError;
+    }
     if ((err as ApiError).code) {
       throw err;
     }
@@ -68,13 +75,14 @@ export async function askGuidance(
   }
 }
 
-export async function fetchHistory(): Promise<GuidanceSession[]> {
+export async function fetchHistory(signal?: AbortSignal): Promise<GuidanceSession[]> {
   const clientSessionId = getOrCreateClientSessionId();
   try {
     const res = await fetch(`/api/history?sessionId=${encodeURIComponent(clientSessionId)}`, {
       headers: {
         'x-session-id': clientSessionId,
       },
+      signal,
     });
     const data = await res.json();
 
@@ -88,6 +96,11 @@ export async function fetchHistory(): Promise<GuidanceSession[]> {
 
     return data as GuidanceSession[];
   } catch (err: unknown) {
+    if ((err as any)?.name === 'AbortError' || signal?.aborted) {
+      const abortError = new Error('History request was aborted');
+      abortError.name = 'AbortError';
+      throw abortError;
+    }
     if ((err as ApiError).code) {
       throw err;
     }
@@ -99,13 +112,14 @@ export async function fetchHistory(): Promise<GuidanceSession[]> {
   }
 }
 
-export async function fetchHistoryById(id: number): Promise<GuidanceSession> {
+export async function fetchHistoryById(id: number, signal?: AbortSignal): Promise<GuidanceSession> {
   const clientSessionId = getOrCreateClientSessionId();
   try {
     const res = await fetch(`/api/history/${id}`, {
       headers: {
         'x-session-id': clientSessionId,
       },
+      signal,
     });
     const data = await res.json();
 
@@ -119,6 +133,11 @@ export async function fetchHistoryById(id: number): Promise<GuidanceSession> {
 
     return data as GuidanceSession;
   } catch (err: unknown) {
+    if ((err as any)?.name === 'AbortError' || signal?.aborted) {
+      const abortError = new Error('History item request was aborted');
+      abortError.name = 'AbortError';
+      throw abortError;
+    }
     if ((err as ApiError).code) {
       throw err;
     }
