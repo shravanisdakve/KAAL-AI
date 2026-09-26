@@ -321,6 +321,42 @@ export function isFactualTriviaQuery(text: string): boolean {
 }
 
 /**
+ * Detects queries centered on self-worth, external criticism, taunts, put-downs,
+ * feeling worthless, "good for nothing", or internalizing harsh judgements.
+ */
+export function isSelfWorthCriticismQuery(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes('taunt') ||
+    lower.includes('good for nothing') ||
+    lower.includes('worthless') ||
+    lower.includes('put me down') ||
+    lower.includes('puts me down') ||
+    lower.includes('putting me down') ||
+    lower.includes('criticiz') ||
+    lower.includes('criticism') ||
+    lower.includes('constant criticism') ||
+    lower.includes('judg') ||
+    lower.includes('belittl') ||
+    lower.includes('ridicul') ||
+    lower.includes('insult') ||
+    lower.includes('hate myself') ||
+    lower.includes('hating myself') ||
+    lower.includes('never good enough') ||
+    (lower.includes('not good enough') && !lower.includes('cousin')) ||
+    lower.includes('believing what others say') ||
+    lower.includes('what others say about me') ||
+    lower.includes('words are making me') ||
+    lower.includes('feel small') ||
+    lower.includes('feel inadequate') ||
+    (lower.includes('wasting my potential') && !lower.includes('cousin')) ||
+    (lower.includes('parents keep saying') && lower.includes('potential')) ||
+    (lower.includes('self-worth') && !lower.includes('cousin')) ||
+    (lower.includes('self worth') && !lower.includes('cousin'))
+  );
+}
+
+/**
  * LAYER 1: NLP Understanding & Linguistic Signal Inference
  * Infers emotional context, intent, topics, and psychological needs from linguistic cues.
  * Note: Emotions are inferred linguistic signals to guide conversational warmth,
@@ -358,6 +394,29 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
   }
   if (lower.includes('compar') || lower.includes('behind') || lower.includes('jealous') || lower.includes('envious') || lower.includes('imposter') || lower.includes('inadequat')) {
     emotions.push('comparison', 'insecurity');
+  }
+  if (
+    lower.includes('taunt') ||
+    lower.includes('good for nothing') ||
+    lower.includes('worthless') ||
+    lower.includes('put me down') ||
+    lower.includes('putting me down') ||
+    lower.includes('puts me down') ||
+    lower.includes('criticiz') ||
+    lower.includes('criticism') ||
+    lower.includes('judg') ||
+    lower.includes('belittl') ||
+    lower.includes('ridicul') ||
+    lower.includes('insult') ||
+    lower.includes('hate myself') ||
+    lower.includes('hating myself') ||
+    lower.includes('not good enough') ||
+    lower.includes('never good enough')
+  ) {
+    emotions.push('hurt', 'insecurity');
+  }
+  if (lower.includes('tired of') || lower.includes('tired') || lower.includes('exhausted')) {
+    emotions.push('exhaustion');
   }
   if (lower.includes('lonely') || lower.includes('alone') || lower.includes('isolated') || lower.includes('hopeless') || lower.includes('no one cares')) {
     emotions.push('loneliness', 'isolation');
@@ -416,18 +475,13 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
     const isComparisonOrExpectations =
       lower.includes('compar') ||
       lower.includes('cousin') ||
-      lower.includes('wasting my potential') ||
-      lower.includes('not good enough') ||
+      (lower.includes('wasting my potential') && lower.includes('cousin')) ||
+      (lower.includes('not good enough') && lower.includes('cousin')) ||
       lower.includes('carrying their expectations') ||
       lower.includes('stop carrying') ||
       lower.includes('measuring up') ||
       lower.includes('measure up') ||
-      lower.includes('self-worth') ||
-      lower.includes('self worth') ||
-      lower.includes('parental expectation') ||
-      lower.includes('external expectation') ||
-      (lower.includes('parent') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar') || lower.includes('potential'))) ||
-      (lower.includes('family') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar')));
+      (lower.includes('parent') && (lower.includes('expect') || lower.includes('disappoint') || lower.includes('compar')));
 
     const isRelationshipGeneral =
       lower.includes('fight') ||
@@ -441,6 +495,22 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
       intent = 'life_direction';
       topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
       needs.push('clarity', 'authentic_direction', 'decision_support', 'boundary_setting');
+    } else if (isSelfWorthCriticismQuery(query)) {
+      intent = 'self_worth_criticism';
+      topics.push(
+        'self_worth',
+        'external_criticism',
+        'taunts_and_judgement',
+        'internalized_criticism',
+        'healthy_boundaries',
+        'emotional_separation'
+      );
+      needs.push(
+        'reclaiming_self_worth',
+        'separating_others_judgement',
+        'emotional_boundaries',
+        'supportive_environment'
+      );
     } else if (isComparisonOrExpectations) {
       intent = 'relationship_conflict';
       topics.push(

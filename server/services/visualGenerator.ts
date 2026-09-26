@@ -7,6 +7,7 @@ import {
   isTechnicalTroubleshootingQuery,
   isCodingTechnicalQuery,
   isFactualTriviaQuery,
+  isSelfWorthCriticismQuery,
 } from './ragEngine.ts';
 
 export interface VisualDecisionInput {
@@ -143,10 +144,20 @@ export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDec
     };
   }
 
-  // B. Comparison, self-worth, external expectations, feeling not enough
+  // B. Comparison, self-worth, external criticism, taunts, external expectations, feeling not enough
   const isComparisonSelfWorth =
-    topics.some((t) => ['comparison', 'self_worth', 'external_expectations', 'boundaries'].includes(t)) ||
-    needs.some((n) => ['self_worth', 'internal_validation', 'healthy_boundaries'].includes(n)) ||
+    intent === 'self_worth_criticism' ||
+    intent === 'self_worth' ||
+    intent === 'external_criticism' ||
+    isSelfWorthCriticismQuery(question) ||
+    topics.some((t) => ['comparison', 'self_worth', 'external_criticism', 'taunts_and_judgement', 'external_expectations', 'boundaries'].includes(t)) ||
+    needs.some((n) => ['self_worth', 'reclaiming_self_worth', 'internal_validation', 'healthy_boundaries'].includes(n)) ||
+    qLower.includes('taunt') ||
+    qLower.includes('good for nothing') ||
+    qLower.includes('worthless') ||
+    qLower.includes('criticiz') ||
+    qLower.includes('put me down') ||
+    qLower.includes('judg') ||
     qLower.includes('comparing me') ||
     qLower.includes('compare me') ||
     qLower.includes('never enough') ||
@@ -159,7 +170,7 @@ export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDec
   if (isComparisonSelfWorth) {
     return {
       show: true,
-      reason: 'Comparison and self-worth challenges benefit from grounding inner-perspective visualization',
+      reason: 'Comparison, external criticism, and self-worth challenges benefit from grounding inner-perspective visualization',
       confidence: 0.95,
     };
   }
@@ -367,12 +378,25 @@ export function generateSituationVisual(params: VisualGeneratorParams): Situatio
     elements.hasLotus = true;
     elements.hasSunRays = true;
   }
-  // Case 2: Comparison / Self-Doubt / External Expectations (e.g. parents comparing to cousins)
+  // Case 2: Comparison / Self-Worth / Taunts & External Criticism / External Expectations
   else if (
+    intent === 'self_worth_criticism' ||
+    intent === 'self_worth' ||
+    intent === 'external_criticism' ||
+    isSelfWorthCriticismQuery(question) ||
     topics.includes('comparison') ||
     topics.includes('self_worth') ||
+    topics.includes('external_criticism') ||
+    topics.includes('taunts_and_judgement') ||
     needs.includes('self_worth') ||
+    needs.includes('reclaiming_self_worth') ||
     needs.includes('internal_validation') ||
+    qLower.includes('taunt') ||
+    qLower.includes('good for nothing') ||
+    qLower.includes('worthless') ||
+    qLower.includes('criticiz') ||
+    qLower.includes('put me down') ||
+    qLower.includes('judg') ||
     qLower.includes('comparing me') ||
     qLower.includes('compare me') ||
     qLower.includes('never enough') ||

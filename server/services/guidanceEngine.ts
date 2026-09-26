@@ -10,6 +10,7 @@ import {
   isTechnicalTroubleshootingQuery,
   isCodingTechnicalQuery,
   isFactualTriviaQuery,
+  isSelfWorthCriticismQuery,
 } from './ragEngine.ts';
 import {
   generateConversationalGuidance,
@@ -658,7 +659,8 @@ function getFrameworkSteps(
   patternGenerated: { steps: string[]; frameworkSteps: TacticalStep[] },
   stepsToUse: string[],
   isTechnical: boolean,
-  isCoding: boolean
+  isCoding: boolean,
+  isSelfWorth?: boolean
 ): TacticalStep[] {
   if (isTechnical) {
     return [
@@ -736,6 +738,44 @@ function getFrameworkSteps(
     ];
   }
 
+  if (isSelfWorth) {
+    return [
+      {
+        id: 1,
+        title: stepsToUse[0] || 'Differentiate External Opinions from Reality',
+        status: 'Active Focus',
+        description:
+          'Audit recurring criticisms and taunts. Actively separate objective facts about your capabilities from other people’s subjective, emotional commentary.',
+        checklist: [
+          'Identify one recurring critical remark and question its factual basis',
+          'Notice where you are internalizing someone else’s frustration as your identity',
+        ],
+      },
+      {
+        id: 2,
+        title: stepsToUse[1] || 'Anchor in Concrete Evidence of Value',
+        status: 'Pending',
+        description:
+          'Write down tangible examples of your personal integrity, past progress, or positive intent that external critics overlook or dismiss.',
+        checklist: [
+          'Document 2 genuine strengths or efforts that hold personal meaning for you',
+          'Acknowledge your intrinsic worth independent of external approval',
+        ],
+      },
+      {
+        id: 3,
+        title: stepsToUse[2] || 'Establish Emotional Boundaries & Supportive Spaces',
+        status: 'Pending',
+        description:
+          'Set clear mental boundaries against hostile commentary and prioritize spending time with people and environments that treat you with dignity.',
+        checklist: [
+          'Choose not to engage with or absorb unconstructive taunts today',
+          'Seek out at least one supportive interaction or grounding environment',
+        ],
+      },
+    ];
+  }
+
   return patternGenerated.frameworkSteps.map((step, idx) => ({
     ...step,
     title: stepsToUse[idx] || step.title,
@@ -777,9 +817,14 @@ export async function runGuidanceEngine(
   const isFactual =
     ragResult.nlpUnderstanding.intent === 'factual_inquiry' ||
     isFactualTriviaQuery(question);
+  const isSelfWorth =
+    ragResult.nlpUnderstanding.intent === 'self_worth_criticism' ||
+    isSelfWorthCriticismQuery(question);
 
   if (isTechnical || isCoding || isFactual) {
     resolvedCategory = 'General Reflection';
+  } else if (isSelfWorth) {
+    resolvedCategory = 'Relationships';
   }
 
   // Extract previous conversation turns if continuing a dialogue
@@ -826,7 +871,8 @@ export async function runGuidanceEngine(
     generated,
     stepsToUse,
     isTechnical,
-    isCoding
+    isCoding,
+    isSelfWorth
   );
 
   // 4. Determine whether situation genuinely benefits from a contemplative visual
@@ -876,6 +922,8 @@ export async function runGuidanceEngine(
           ? 'Technical Diagnostic Troubleshooting'
           : isCoding
           ? 'Technical Programming & Concept Clarification'
+          : isSelfWorth
+          ? 'Reclaiming Self-Worth Beyond External Criticism'
           : pattern.name,
       score: topCategory.score,
       matchedKeywords: topCategory.matchedKeywords,
@@ -925,9 +973,14 @@ export function runGuidanceEngineSync(question: string): {
   const isFactual =
     ragResult.nlpUnderstanding.intent === 'factual_inquiry' ||
     isFactualTriviaQuery(question);
+  const isSelfWorth =
+    ragResult.nlpUnderstanding.intent === 'self_worth_criticism' ||
+    isSelfWorthCriticismQuery(question);
 
   if (isTechnical || isCoding || isFactual) {
     resolvedCategory = 'General Reflection';
+  } else if (isSelfWorth) {
+    resolvedCategory = 'Relationships';
   }
 
   const conversational = synthesizeEmpatheticFallback({
@@ -953,7 +1006,8 @@ export function runGuidanceEngineSync(question: string): {
     generated,
     stepsToUse,
     isTechnical,
-    isCoding
+    isCoding,
+    isSelfWorth
   );
 
   const visualDecision = shouldShowSituationVisual({
@@ -1004,6 +1058,8 @@ export function runGuidanceEngineSync(question: string): {
             ? 'Technical Diagnostic Troubleshooting'
             : isCoding
             ? 'Technical Programming & Concept Clarification'
+            : isSelfWorth
+            ? 'Reclaiming Self-Worth Beyond External Criticism'
             : pattern.name,
         score: topCategory.score,
         matchedKeywords: topCategory.matchedKeywords,

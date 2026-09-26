@@ -370,6 +370,109 @@ async function runTestSuite() {
     assert.ok(response.steps[0].toLowerCase().includes('power') || response.steps[0].toLowerCase().includes('cable'));
   });
 
+  // 4b. Self-Worth & External Criticism Quality Regressions
+  await test('Self-Worth & Taunts Quality Regression: "I am tired of listening to taunts from everyone. I feel good for nothing."', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const query = 'I am tired of listening to taunts from everyone. I feel good for nothing.';
+
+    // NLP extraction
+    const nlp = extractNlpUnderstanding(query);
+    assert.strictEqual(nlp.intent, 'self_worth_criticism');
+    assert.ok(nlp.emotions.includes('hurt') || nlp.emotions.includes('insecurity'));
+    assert.ok(nlp.emotions.includes('exhaustion'));
+    assert.ok(nlp.topics.includes('self_worth'));
+    assert.ok(nlp.needs.includes('reclaiming_self_worth'));
+
+    // Guidance synthesis
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.shloka, null);
+    assert.strictEqual(response.whyThisRelates, undefined);
+    assert.ok(!response.title.includes('Welcome'));
+    assert.ok(!response.conversationalReply.includes('feelings of reflective'));
+    assert.ok(
+      response.title.toLowerCase().includes('self-worth') ||
+      response.title.toLowerCase().includes('criticism') ||
+      response.title.toLowerCase().includes('taunt')
+    );
+
+    const replyLower = response.conversationalReply.toLowerCase();
+    assert.ok(replyLower.includes('taunt') || replyLower.includes('criticiz'));
+    assert.ok(replyLower.includes('worth') || replyLower.includes('good for nothing'));
+    assert.ok(replyLower.includes('boundar') || replyLower.includes('opinion'));
+
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.situationVisual !== null, 'Emotional self-worth situation must receive a grounding visual');
+    assert.strictEqual(response.situationVisual?.theme, 'quiet-anchor');
+    assert.ok(
+      response.situationVisual?.title.toLowerCase().includes('worth') ||
+      response.situationVisual?.title.toLowerCase().includes('anchor')
+    );
+    assert.ok(response.meta);
+    assert.strictEqual(response.meta?.pattern, 'Reclaiming Self-Worth Beyond External Criticism');
+    assert.strictEqual(response.frameworkSteps.length, 3);
+    assert.strictEqual(response.frameworkSteps[0].title, response.steps[0]);
+  });
+
+  await test('Self-Worth & Put-Downs Quality Regression: "Everyone keeps putting me down and I\'m starting to believe them."', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const query = "Everyone keeps putting me down and I'm starting to believe them.";
+
+    const nlp = extractNlpUnderstanding(query);
+    assert.strictEqual(nlp.intent, 'self_worth_criticism');
+
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.ok(response.title.toLowerCase().includes('self-worth') || response.title.toLowerCase().includes('criticism'));
+    assert.strictEqual(response.steps.length, 3);
+    assert.ok(response.situationVisual !== null);
+    assert.strictEqual(response.situationVisual?.theme, 'quiet-anchor');
+  });
+
+  await test('Self-Worth & Inadequacy Quality Regression: "I feel like I\'m never good enough compared with everyone around me."', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const query = "I feel like I'm never good enough compared with everyone around me.";
+
+    const nlp = extractNlpUnderstanding(query);
+    assert.strictEqual(nlp.intent, 'self_worth_criticism');
+
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.situationVisual?.theme, 'quiet-anchor');
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Constant Criticism Quality Regression: "People constantly criticize everything I do."', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const query = 'People constantly criticize everything I do.';
+
+    const nlp = extractNlpUnderstanding(query);
+    assert.strictEqual(nlp.intent, 'self_worth_criticism');
+
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.situationVisual?.theme, 'quiet-anchor');
+    assert.strictEqual(response.steps.length, 3);
+  });
+
+  await test('Parent Potential Criticism Quality Regression: "My parents keep saying I\'m wasting my potential."', async () => {
+    const { extractNlpUnderstanding } = await import('../server/services/ragEngine.ts');
+    const query = "My parents keep saying I'm wasting my potential.";
+
+    const nlp = extractNlpUnderstanding(query);
+    assert.strictEqual(nlp.intent, 'self_worth_criticism');
+
+    const { category, response } = await runGuidanceEngine(query);
+    assert.strictEqual(category, 'Relationships');
+    assert.strictEqual(response.isShlokaRelevant, false);
+    assert.strictEqual(response.situationVisual?.theme, 'quiet-anchor');
+    assert.strictEqual(response.steps.length, 3);
+  });
+
   // 5. Database Operations & Dual-Persistence
   await test('Database: creates and retrieves a guidance session with RAG shloka payload', async () => {
     const question = 'Test session: overwhelmed with stress';

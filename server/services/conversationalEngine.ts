@@ -4,6 +4,7 @@ import {
   isTechnicalTroubleshootingQuery,
   isCodingTechnicalQuery,
   isFactualTriviaQuery,
+  isSelfWorthCriticismQuery,
 } from './ragEngine.ts';
 
 export interface ConversationalSynthesisInput {
@@ -328,7 +329,33 @@ export function synthesizeEmpatheticFallback(
       };
     }
 
-    // 1G. Real Guidance Dilemma: Parental Comparison, Expectations & Self-Worth
+    // 1G-1. Real Guidance Dilemma: Self-Worth, Taunts & External Criticism
+    const isSelfWorthOrCriticism =
+      intent === 'self_worth_criticism' ||
+      intent === 'self_worth' ||
+      intent === 'external_criticism' ||
+      isSelfWorthCriticismQuery(question);
+
+    if (isSelfWorthOrCriticism) {
+      return {
+        title: 'Reclaiming Self-Worth Beyond External Criticism and Taunts',
+        summary:
+          'Repeated taunts and criticism can make other people’s harsh words feel like your own identity, but someone else’s judgment is never an objective measure of your intrinsic worth.',
+        conversationalReply:
+          'Being repeatedly criticized or subjected to taunts can make other people’s harsh words start to sound like your own inner voice. When you hear constant negative commentary, it is completely natural to feel worn down, hurt, and to begin wondering if you truly are "good for nothing."\n\n' +
+          'Regardless of why others criticize or taunt, you do not have to treat their judgements as facts about your worth. Before trying to become "better" to appease everyone around you, pause and separate two very different questions: "What do I genuinely value and want to cultivate in myself?" versus "What am I simply being told is wrong with me?" Those are never the same thing.\n\n' +
+          'You do not have to prove your value to people whose opinions are rooted in cynicism or thoughtlessness. Healthy self-worth starts with healthy boundaries: actively filtering out unconstructive noise, anchoring in what is true about your sincere efforts, and seeking environments and people who treat you with basic dignity and respect.',
+        reflectionPrompt:
+          'Which things you currently believe about yourself came from your own lived experience, and which came from repeatedly hearing them from other people?',
+        steps: [
+          'Identify one recurring taunt or criticism you have started treating as a fact, and consciously question its validity.',
+          'Write down one piece of concrete evidence from your own life that disproves the feeling of being "good for nothing."',
+          'Decide on one boundary or supportive environment to spend time in today, reducing your exposure to toxic commentary.',
+        ],
+      };
+    }
+
+    // 1G-2. Real Guidance Dilemma: Parental Comparison, Expectations & Self-Worth
     const isComparisonOrParentalExpectations =
       intent === 'relationship_conflict' ||
       (category === 'Relationships' && (qLower.includes('compar') || qLower.includes('expect') || qLower.includes('parent') || qLower.includes('cousin'))) ||
@@ -456,7 +483,25 @@ export function synthesizeEmpatheticFallback(
 
     // 1K. General Guidance Fallback (Respectful, Situation-Specific, Non-Greeting)
     const displayCategory = category || 'Clarity';
-    const emotionText = detectedEmotion ? ` amidst feelings of ${detectedEmotion.toLowerCase()}` : '';
+    const emotionNounMap: Record<string, string> = {
+      anxiety: 'anxiety',
+      overwhelm: 'overwhelm',
+      stress: 'stress',
+      grief: 'grief',
+      fear: 'fear',
+      anger: 'anger',
+      sadness: 'sadness',
+      hurt: 'hurt',
+      insecurity: 'insecurity',
+      loneliness: 'loneliness',
+      exhaustion: 'exhaustion',
+      confusion: 'confusion',
+      uncertainty: 'uncertainty',
+      shame: 'shame',
+      guilt: 'guilt',
+    };
+    const mappedEmotionNoun = detectedEmotion ? emotionNounMap[detectedEmotion.toLowerCase()] : undefined;
+    const emotionText = mappedEmotionNoun ? ` amidst feelings of ${mappedEmotionNoun}` : '';
 
     return {
       title: `Navigating Your Dilemma with ${displayCategory}`,
@@ -868,6 +913,12 @@ CRITICAL INTELLECTUAL HONESTY & CONVERSATIONAL GUIDELINES:
        : input.intent === 'coding_technical' || isCodingTechnicalQuery(input.question)
        ? `CRITICAL CODING / PROGRAMMING RULE:
    The user is asking a programming or technical coding question. Provide a direct, clear technical explanation with code concepts (e.g. base cases, recursion, stack execution). DO NOT use spiritual metaphors.`
+       : input.intent === 'self_worth_criticism' || isSelfWorthCriticismQuery(input.question)
+       ? `CRITICAL SELF-WORTH & EXTERNAL CRITICISM RULE:
+   The user is describing experiences with repeated criticism, taunts, insults, put-downs, or feeling worthless / "good for nothing" / not good enough.
+   Directly address the burden of constant negative commentary, how hearing continuous taunts can cause one to internalize other people's harsh words as their own inner voice, and the vital necessity of separating others' judgments from one's intrinsic worth.
+   Do NOT make absolute claims about why others criticize or taunt (do NOT say "they are projecting their fears or insecurities onto you"). Frame it objectively: people may criticize or taunt for reasons unrelated to the user's worth, but the user is not obligated to accept those words as truth or shape their identity around unconstructive hostility.
+   Provide grounding perspective, emphasize healthy emotional boundaries and seeking supportive spaces, a reflective prompt on untangling external commentary from self-perception, and 3 low-friction, concrete steps to anchor in reality and protect their peace.`
        : `Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. comparison and parental expectations, feeling not good enough, self-worth and boundaries, relationship conflict, career confusion, grief, stress, technical frustration, household tension), addressing their emotions (${input.detectedEmotion}), topic (${(input.topics || []).join(', ')}), and psychological needs (${(input.needs || []).join(', ')}). Offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
    }`
 }
