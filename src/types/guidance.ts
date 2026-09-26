@@ -108,6 +108,7 @@ export interface StructuredGuidanceResponse {
     finalScore?: number;
     nlpAnalysis?: NlpUnderstanding;
     candidateRankings?: { id: string; finalScore: number }[];
+    classification?: any;
   };
 }
 

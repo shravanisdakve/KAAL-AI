@@ -560,20 +560,14 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
       lower.includes('passed away') ||
       lower.includes('death') ||
       lower.includes('grief') ||
-      lower.includes('loss')
+      lower.includes('loss') ||
+      lower.includes('lost someone') ||
+      lower.includes('lost my') ||
+      lower.includes('lost a')
     ) {
       intent = 'grief_processing';
       topics.push('bereavement', 'eternal_soul', 'impermanence');
       needs.push('gentle_comfort', 'reverence', 'acceptance');
-    } else if (
-      lower.includes('procrastinat') ||
-      lower.includes('routine') ||
-      lower.includes('habit') ||
-      lower.includes('lazy')
-    ) {
-      intent = 'habit_discipline';
-      topics.push('discipline', 'action', 'momentum', 'habits');
-      needs.push('micro_step', 'breaking_inertia', 'focus');
     } else if (
       lower.includes('meditat') ||
       lower.includes('stillness') ||
@@ -583,6 +577,15 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
       intent = 'mindfulness_stillness';
       topics.push('meditation', 'abhyasa', 'inner_peace', 'stillness');
       needs.push('breath', 'patience_with_mind', 'quietness');
+    } else if (
+      lower.includes('procrastinat') ||
+      lower.includes('routine') ||
+      lower.includes('habit') ||
+      lower.includes('lazy')
+    ) {
+      intent = 'habit_discipline';
+      topics.push('discipline', 'action', 'momentum', 'habits');
+      needs.push('micro_step', 'breaking_inertia', 'focus');
     } else {
       topics.push('general_reflection');
       needs.push('perspective', 'clarity');
@@ -785,6 +788,11 @@ function rerankCandidates(
       if (shloka.id === 'BG3.8' || shloka.id === 'BG18.37') intentMatch = 1.0;
     } else if (nlpUnderstanding.intent === 'mindfulness_stillness') {
       if (shloka.id === 'BG6.35' || shloka.id === 'BG6.26' || shloka.id === 'BG6.19') intentMatch = 1.0;
+    } else if (nlpUnderstanding.intent === 'self_worth_criticism') {
+      if (shloka.id === 'BG12.15') intentMatch = 0.65;
+      else if (shloka.id === 'BG6.5') intentMatch = 0.6;
+      else if (shloka.id === 'BG17.15') intentMatch = 0.55;
+      else intentMatch = 0.15;
     }
 
     // 2. Theme Match
@@ -883,8 +891,11 @@ function rerankCandidates(
  * Synchronous / Deterministic RAG Retrieval fallback.
  * Uses dense semantic concept projections + lexical matching for instant offline execution.
  */
-export function retrieveGitaShlokaRAGSync(query: string): RAGRetrievalResult {
-  const nlpUnderstanding = extractNlpUnderstanding(query);
+export function retrieveGitaShlokaRAGSync(
+  query: string,
+  precomputedNlp?: NlpUnderstanding
+): RAGRetrievalResult {
+  const nlpUnderstanding = precomputedNlp || extractNlpUnderstanding(query);
   const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
 
   if (detectHighRiskSafetySignal(query).isHighRisk || isCasualOrNonSpiritualQuery(query)) {
@@ -936,8 +947,11 @@ export function retrieveGitaShlokaRAGSync(query: string): RAGRetrievalResult {
  * 5. Strict Relevance Threshold Gating (GITA_RELEVANCE_THRESHOLD = 0.70)
  * 6. Graceful Deterministic Fallback if pgvector or embeddings API is unavailable
  */
-export async function retrieveGitaShlokaRAG(query: string): Promise<RAGRetrievalResult> {
-  const nlpUnderstanding = extractNlpUnderstanding(query);
+export async function retrieveGitaShlokaRAG(
+  query: string,
+  precomputedNlp?: NlpUnderstanding
+): Promise<RAGRetrievalResult> {
+  const nlpUnderstanding = precomputedNlp || extractNlpUnderstanding(query);
   const detectedEmotion = nlpUnderstanding.emotions.join(' & ') || 'Reflective';
 
   if (detectHighRiskSafetySignal(query).isHighRisk || isCasualOrNonSpiritualQuery(query)) {
@@ -990,5 +1004,5 @@ export async function retrieveGitaShlokaRAG(query: string): Promise<RAGRetrieval
   }
 
   // Deterministic Fallback
-  return retrieveGitaShlokaRAGSync(query);
+  return retrieveGitaShlokaRAGSync(query, nlpUnderstanding);
 }

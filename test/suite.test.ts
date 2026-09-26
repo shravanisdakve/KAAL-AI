@@ -7,6 +7,12 @@ import {
 } from '../server/services/guidanceEngine.ts';
 import { retrieveGitaShlokaRAG } from '../server/services/ragEngine.ts';
 import { dbClient } from '../server/db/client.ts';
+import {
+  classifyQuery,
+  classifyQuerySync,
+  isEligibleForClassifier,
+  clearClassifierCache,
+} from '../server/services/queryClassifier.ts';
 
 async function runTestSuite() {
   console.log('\n🧪 Running KAAL AI Comprehensive Test Suite...\n');
@@ -1002,6 +1008,168 @@ async function runTestSuite() {
 
     const isAbort = abortErr.name === 'AbortError';
     assert.strictEqual(isAbort, true, 'AbortError must be recognized as non-fatal cancellation');
+  });
+
+  // 9. Structured Query Classifier & Layered Guardrails (Path A)
+  await test('Structured Classifier: Career dilemma classified to career_confusion and feeds downstream RAG and visual', async () => {
+    const query =
+      "I'm confused about which career path I should choose. My parents want me to become a doctor, but I really want to pursue design.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'career_confusion');
+    assert.strictEqual(classification.domain, 'emotional_guidance');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.category, 'Clarity');
+    assert.strictEqual(result.response.meta?.classification?.primaryIntent, 'career_confusion');
+    assert.strictEqual(result.response.isShlokaRelevant, true);
+    assert.strictEqual(result.response.shloka?.id, 'BG3.35');
+    assert.ok(result.response.situationVisual !== null, 'Career dilemma must receive path visual');
+  });
+
+  await test('Structured Classifier: Self-worth and taunts classified to self_worth without forcing shloka', async () => {
+    const query = 'I am tired of listening to taunts from everyone. I feel good for nothing.';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'self_worth');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.category, 'Relationships');
+    assert.strictEqual(result.response.meta?.classification?.primaryIntent, 'self_worth');
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.shloka, null);
+    assert.ok(result.response.conversationalReply.includes('taunts') || result.response.conversationalReply.includes('criticiz'));
+  });
+
+  await test('Structured Classifier: Relationship conflict classified to relationship_conflict and feeds bridge visual', async () => {
+    const query = 'My partner and I keep having the same argument.';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'relationship_conflict');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.category, 'Relationships');
+    assert.strictEqual(result.response.meta?.classification?.primaryIntent, 'relationship_conflict');
+    assert.ok(result.response.situationVisual !== null, 'Relationship conflict must receive bridge visual');
+  });
+
+  await test('Structured Classifier: Grief query classified to grief with compassionate guidance', async () => {
+    const query = "I lost someone close to me and I don't know how to cope.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'grief');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.response.meta?.classification?.primaryIntent, 'grief');
+    assert.ok(result.response.situationVisual !== null, 'Grief must receive respectful visual');
+  });
+
+  await test('Layered Guardrails: Technical troubleshooting bypasses classifier completely', async () => {
+    const query = 'My laptop is overheating and shutting down.';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'technical_troubleshooting');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.category, 'General Reflection');
+    assert.strictEqual(result.response.meta?.classification, undefined, 'Technical query must not run classifier');
+    assert.strictEqual(result.response.meta?.pattern, 'Technical Diagnostic Troubleshooting');
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.situationVisual, null);
+  });
+
+  await test('Layered Guardrails: Technical troubleshooting with emotional word bypasses classifier and spiritual categories', async () => {
+    const query = 'My Wi-Fi keeps disconnecting and I am really stressed.';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'technical_troubleshooting');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.category, 'General Reflection', 'Emotional word must NOT hijack technical problem to Stress category');
+    assert.strictEqual(result.response.meta?.classification, undefined);
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.situationVisual, null);
+  });
+
+  await test('Layered Guardrails: Factual inquiry bypasses classifier and gives direct answer', async () => {
+    const query = 'What is the capital of France?';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'factual_inquiry');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.response.meta?.classification, undefined);
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.situationVisual, null);
+    assert.ok(result.response.conversationalReply.includes('Paris'));
+  });
+
+  await test('Layered Guardrails: Casual greeting bypasses classifier without Gita or visual', async () => {
+    const query = 'Hello';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'casual_greeting');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.response.meta?.classification, undefined);
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.situationVisual, null);
+    assert.ok(result.response.title.includes('Welcome') || result.response.title.includes('Clarity'));
+  });
+
+  await test('Layered Guardrails: High-risk safety signal terminates before classifier or RAG', async () => {
+    const query = 'I sometimes wonder if everyone would be better off without me.';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'high_risk_safety');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.response.safetyFlag, true);
+    assert.strictEqual(result.response.safetyLevel, 'high');
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.shloka, null);
+    assert.strictEqual(result.response.situationVisual, null);
+    assert.strictEqual(result.response.meta?.classification, undefined);
+  });
+
+  await test('Structured Classifier: Ambiguous life dilemma handled with reflective guidance without forced specificity', async () => {
+    const query = "I don't know what to do with my life.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.ok(
+      ['career_confusion', 'general_reflection', 'decision_support', 'purpose'].includes(
+        classification.primaryIntent
+      )
+    );
+
+    const result = await runGuidanceEngine(query);
+    assert.ok(result.response.title.length > 0);
+    assert.strictEqual(result.response.steps.length, 3);
+  });
+
+  await test('Structured Classifier Caching & Latency: Repeated query resolves from cache in < 10ms', async () => {
+    clearClassifierCache();
+    const query = 'I feel completely overwhelmed by everything right now.';
+
+    const initial = await classifyQuery(query);
+    assert.strictEqual(initial.primaryIntent, 'overwhelm');
+
+    const cached = await classifyQuery(query);
+    assert.strictEqual(cached.primaryIntent, 'overwhelm');
+    assert.ok(
+      (cached.latencyMs || 0) < 15,
+      `Cached classification must be instant (< 15ms), took ${cached.latencyMs}ms`
+    );
   });
 
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);

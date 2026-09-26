@@ -15,6 +15,7 @@ import {
 import {
   generateConversationalGuidance,
   synthesizeEmpatheticFallback,
+  isCasualGreeting,
 } from './conversationalEngine.ts';
 import {
   generateSituationVisual,
@@ -26,6 +27,13 @@ import {
   generateHighRiskSafetyResponse,
   generateSafetyFollowUpResponse,
 } from './safetyEngine.ts';
+import {
+  classifyQuery,
+  classifyQuerySync,
+  classificationToNlpUnderstanding,
+  classificationToCategory,
+  StructuredClassificationResult,
+} from './queryClassifier.ts';
 
 interface KeywordRule {
   term: string;
@@ -816,35 +824,44 @@ export async function runGuidanceEngine(
     };
   }
 
-  const normalized = normalizeText(question);
-  const scoredCategories = calculateCategoryScores(normalized);
+  // 1. DETERMINISTIC TECHNICAL & PRACTICAL GUARD (Highest Priority Domain Filter)
+  // Technical hardware/network troubleshooting, coding syntax, factual trivia, and casual greetings
+  // MUST stay outside reflective dilemma guidance and bypass the structured guidance classifier.
+  const isTechnical = isTechnicalTroubleshootingQuery(question);
+  const isCoding = isCodingTechnicalQuery(question);
+  const isFactual = isFactualTriviaQuery(question);
+  const isGreeting = isCasualGreeting(question);
+  const isPracticalOrGreeting = isTechnical || isCoding || isFactual || isGreeting;
 
-  const topCategory = scoredCategories[0];
+  let classification: StructuredClassificationResult | undefined;
+  let precomputedNlp = undefined;
+  let resolvedCategory: GuidanceCategory = 'General Reflection';
 
-  // If score is negligible (< 2), fallback to General Reflection category
-  let resolvedCategory: GuidanceCategory = topCategory.category;
-  if (topCategory.score < 2) {
-    resolvedCategory = 'General Reflection';
+  if (!isPracticalOrGreeting) {
+    // 2. STRUCTURED GEMINI CLASSIFIER (Only executed for real human/emotional/life dilemmas)
+    classification = await classifyQuery(question);
+    precomputedNlp = classificationToNlpUnderstanding(classification);
+    resolvedCategory = classificationToCategory(classification);
   }
 
-  // 1. Run Bhagavad Gita RAG Retrieval Pipeline
-  const ragResult = await retrieveGitaShlokaRAG(question);
+  const normalized = normalizeText(question);
+  const scoredCategories = calculateCategoryScores(normalized);
+  const topCategory = scoredCategories[0];
 
-  // Technical troubleshooting, coding, and factual queries must NEVER be categorized under spiritual Stress/Fear categories
-  const isTechnical =
-    ragResult.nlpUnderstanding.intent === 'technical_troubleshooting' ||
-    isTechnicalTroubleshootingQuery(question);
-  const isCoding =
-    ragResult.nlpUnderstanding.intent === 'coding_technical' ||
-    isCodingTechnicalQuery(question);
-  const isFactual =
-    ragResult.nlpUnderstanding.intent === 'factual_inquiry' ||
-    isFactualTriviaQuery(question);
+  // If not classified (e.g. practical/greeting) and score >= 2, check keyword category
+  if (!classification && topCategory.score >= 2 && !isPracticalOrGreeting) {
+    resolvedCategory = topCategory.category;
+  }
+
+  // 3. Bhagavad Gita Hybrid RAG Retrieval (Uses precomputed NLP understanding from classifier)
+  const ragResult = await retrieveGitaShlokaRAG(question, precomputedNlp);
+
   const isSelfWorth =
+    (classification && classification.primaryIntent === 'self_worth') ||
     ragResult.nlpUnderstanding.intent === 'self_worth_criticism' ||
     isSelfWorthCriticismQuery(question);
 
-  if (isTechnical || isCoding || isFactual) {
+  if (isPracticalOrGreeting) {
     resolvedCategory = 'General Reflection';
   } else if (isSelfWorth) {
     resolvedCategory = 'Relationships';
@@ -868,7 +885,7 @@ export async function runGuidanceEngine(
         ]
       : undefined;
 
-  // 2. Synthesize Human-Like Conversational Guidance with conversation history
+  // 4. Synthesize Human-Like Conversational Guidance with conversation history
   const conversational = await generateConversationalGuidance({
     question,
     category: resolvedCategory,
@@ -881,7 +898,7 @@ export async function runGuidanceEngine(
     conversationHistory,
   });
 
-  // 3. Fallback Pattern Selection (for tactical steps compatibility)
+  // 5. Fallback Pattern Selection (for tactical steps compatibility)
   const pattern = selectPattern(resolvedCategory, normalized);
   const generated = pattern.generate(question);
 
@@ -898,7 +915,7 @@ export async function runGuidanceEngine(
     isSelfWorth
   );
 
-  // 4. Determine whether situation genuinely benefits from a contemplative visual
+  // 6. Determine whether situation genuinely benefits from a contemplative visual
   const visualDecision = shouldShowSituationVisual({
     question,
     category: resolvedCategory,
@@ -960,6 +977,7 @@ export async function runGuidanceEngine(
       finalScore: ragResult.finalScore,
       nlpAnalysis: ragResult.nlpUnderstanding,
       candidateRankings: ragResult.candidateRankings,
+      classification,
     },
   };
 
@@ -985,31 +1003,39 @@ export function runGuidanceEngineSync(question: string): {
     };
   }
 
-  const normalized = normalizeText(question);
-  const scoredCategories = calculateCategoryScores(normalized);
+  // 1. DETERMINISTIC TECHNICAL & PRACTICAL GUARD
+  const isTechnical = isTechnicalTroubleshootingQuery(question);
+  const isCoding = isCodingTechnicalQuery(question);
+  const isFactual = isFactualTriviaQuery(question);
+  const isGreeting = isCasualGreeting(question);
+  const isPracticalOrGreeting = isTechnical || isCoding || isFactual || isGreeting;
 
-  const topCategory = scoredCategories[0];
-  let resolvedCategory: GuidanceCategory = topCategory.category;
-  if (topCategory.score < 2) {
-    resolvedCategory = 'General Reflection';
+  let classification: StructuredClassificationResult | undefined;
+  let precomputedNlp = undefined;
+  let resolvedCategory: GuidanceCategory = 'General Reflection';
+
+  if (!isPracticalOrGreeting) {
+    classification = classifyQuerySync(question);
+    precomputedNlp = classificationToNlpUnderstanding(classification);
+    resolvedCategory = classificationToCategory(classification);
   }
 
-  const ragResult = retrieveGitaShlokaRAGSync(question);
+  const normalized = normalizeText(question);
+  const scoredCategories = calculateCategoryScores(normalized);
+  const topCategory = scoredCategories[0];
 
-  const isTechnical =
-    ragResult.nlpUnderstanding.intent === 'technical_troubleshooting' ||
-    isTechnicalTroubleshootingQuery(question);
-  const isCoding =
-    ragResult.nlpUnderstanding.intent === 'coding_technical' ||
-    isCodingTechnicalQuery(question);
-  const isFactual =
-    ragResult.nlpUnderstanding.intent === 'factual_inquiry' ||
-    isFactualTriviaQuery(question);
+  if (!classification && topCategory.score >= 2 && !isPracticalOrGreeting) {
+    resolvedCategory = topCategory.category;
+  }
+
+  const ragResult = retrieveGitaShlokaRAGSync(question, precomputedNlp);
+
   const isSelfWorth =
+    (classification && classification.primaryIntent === 'self_worth') ||
     ragResult.nlpUnderstanding.intent === 'self_worth_criticism' ||
     isSelfWorthCriticismQuery(question);
 
-  if (isTechnical || isCoding || isFactual) {
+  if (isPracticalOrGreeting) {
     resolvedCategory = 'General Reflection';
   } else if (isSelfWorth) {
     resolvedCategory = 'Relationships';
@@ -1105,6 +1131,7 @@ export function runGuidanceEngineSync(question: string): {
         finalScore: ragResult.finalScore,
         nlpAnalysis: ragResult.nlpUnderstanding,
         candidateRankings: ragResult.candidateRankings,
+        classification,
       },
     },
   };
