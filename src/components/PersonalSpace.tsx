@@ -5,14 +5,14 @@ interface PersonalSpaceProps {
   isCollapsed?: boolean;
 }
 
-// Demo user specification
+// Anonymous guest session specification
 const DEMO_USER = {
-  fullName: 'Shravani Sunil Dakve',
-  displayName: 'Shravani',
-  initials: 'SD',
-  email: 'shravanisdakve@gmail.com',
-  plan: 'Standard Plan',
-  accountType: 'Demo User',
+  fullName: 'Guest User',
+  displayName: 'Guest Session',
+  initials: 'GS',
+  email: 'anonymous@kaalai.in',
+  plan: 'Private Session',
+  accountType: 'Anonymous Session',
 };
 
 export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = false }) => {

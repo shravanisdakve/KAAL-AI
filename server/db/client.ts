@@ -22,40 +22,22 @@ import { BHAGAVAD_GITA_CORPUS } from '../data/gitaDataset.ts';
 
 const { Pool } = pg;
 
-// Seed data aligned with the UI design screenshot
+// Clean demo seed dataset: Career crossroads, Finding purpose, Relationship conflict
 const INITIAL_SEED_QUESTIONS = [
   {
-    question: 'I feel confused about which path I should take in life.',
+    question: 'I feel confused about which career path to choose and worried about making the wrong decision.',
     category: 'Clarity' as GuidanceCategory,
-    timeOffsetHours: 0.1, // Today
+    timeOffsetHours: 0.2, // Today
   },
   {
-    question:
-      'I feel overwhelmed by everything happening in my life. What should I do?',
-    category: 'Stress' as GuidanceCategory,
-    timeOffsetHours: 1.2, // Today
-  },
-  {
-    question: 'My mind keeps overthinking things. How can I become calmer?',
-    category: 'Stress' as GuidanceCategory,
-    timeOffsetHours: 3.5, // Today
-  },
-  {
-    question: 'I know what I need to do, but I keep procrastinating.',
-    category: 'Discipline' as GuidanceCategory,
-    timeOffsetHours: 25.0, // Yesterday
-  },
-  {
-    question:
-      "I feel like I am working hard but I don't know what my purpose is.",
+    question: "I feel like I am working hard but I don't know what my purpose is.",
     category: 'Purpose' as GuidanceCategory,
-    timeOffsetHours: 28.5, // Yesterday
+    timeOffsetHours: 24.5, // Yesterday
   },
   {
-    question:
-      'How can I build a meditation habit that I can actually maintain?',
-    category: 'Meditation' as GuidanceCategory,
-    timeOffsetHours: 52.0, // Earlier
+    question: 'My partner and I keep having the same argument and I want to communicate with less anger.',
+    category: 'Relationships' as GuidanceCategory,
+    timeOffsetHours: 50.0, // Earlier
   },
 ];
 

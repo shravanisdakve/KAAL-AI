@@ -214,12 +214,15 @@ export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDec
     };
   }
 
-  // D. Overwhelm, burnout, chronic stress, racing mind, results anxiety
+  // D. Overwhelm, burnout, chronic stress, racing mind, results anxiety, outcome attachment
   const isOverwhelmStress =
+    intent === 'outcome_attachment' ||
+    intent === 'action_vs_outcome' ||
     intent === 'overwhelm_burnout' ||
     intent === 'anxiety_results' ||
     category === 'Stress' ||
-    topics.some((t) => ['overwhelm', 'burnout', 'stress', 'results_anxiety', 'calm_mind'].includes(t)) ||
+    topics.some((t) => ['outcome_attachment', 'outcomes', 'effort', 'overwhelm', 'burnout', 'stress', 'results_anxiety', 'calm_mind'].includes(t)) ||
+    needs.some((n) => ['present_focus', 'process_orientation', 'emotional_detachment_from_outcome'].includes(n)) ||
     qLower.includes('overwhelm') ||
     qLower.includes('burnout') ||
     qLower.includes('deadlines') ||
@@ -229,11 +232,13 @@ export function shouldShowSituationVisual(input: VisualDecisionInput): VisualDec
     qLower.includes('anxiety') ||
     qLower.includes('mind keeps overthinking') ||
     qLower.includes('anxious') ||
-    qLower.includes('pressure');
+    qLower.includes('pressure') ||
+    qLower.includes('paying off') ||
+    qLower.includes('actually pay off');
   if (isOverwhelmStress) {
     return {
       show: true,
-      reason: 'Overwhelm and acute stress benefit from calming stillness and tranquil water visualization',
+      reason: 'Overwhelm, outcome attachment, and acute stress benefit from calming stillness and tranquil water visualization',
       confidence: 0.92,
     };
   }
@@ -525,10 +530,15 @@ export function generateSituationVisual(params: VisualGeneratorParams): Situatio
     elements.hasLanterns = true;
     elements.hasStars = true;
   }
-  // Case 5: Stress / Overwhelm / Results anxiety (e.g. BG 2.47, Karmanye Vadhikaraste)
+  // Case 5: Stress / Overwhelm / Results anxiety / Outcome Attachment (e.g. BG 2.47, Karmanye Vadhikaraste)
   else if (
+    intent === 'outcome_attachment' ||
+    intent === 'action_vs_outcome' ||
     intent === 'overwhelm_burnout' ||
     intent === 'anxiety_results' ||
+    topics.includes('outcome_attachment') ||
+    topics.includes('outcomes') ||
+    topics.includes('effort') ||
     topics.includes('overwhelm') ||
     category === 'Stress' ||
     qLower.includes('overwhelm') ||
@@ -537,6 +547,8 @@ export function generateSituationVisual(params: VisualGeneratorParams): Situatio
     qLower.includes('anxious') ||
     qLower.includes('pressure') ||
     qLower.includes('burnout') ||
+    qLower.includes('paying off') ||
+    qLower.includes('actually pay off') ||
     (shloka && shloka.id === 'BG2.47')
   ) {
     theme = 'still-lake';

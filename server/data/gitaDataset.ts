@@ -23,12 +23,12 @@ export const BHAGAVAD_GITA_CORPUS: GitaShloka[] = [
     coreWisdom: 'Focus entirely on the quality of your effort, and gently surrender anxiety about the outcome.',
     themes: ['action', 'results', 'anxiety', 'overwhelm', 'stress', 'burnout', 'control', 'inaction', 'detachment', 'pressure', 'drowning', 'future'],
     concepts: ['nishkama-karma', 'agency-over-effort', 'outcome-detachment', 'present-moment-action'],
-    contexts: ['competing priorities', 'fear of failing exams', 'career interview anxiety', 'workplace pressure', 'too much work', 'unrealistic deadlines'],
+    contexts: ['competing priorities', 'fear of failing exams', 'career interview anxiety', 'workplace pressure', 'too much work', 'unrealistic deadlines', 'worrying about whether the result will be successful', 'focus on what i can control', 'struggling to focus on work', 'whether my efforts are paying off', 'consumed by the outcome'],
     emotional_relevance: ['overwhelmed', 'anxious', 'paralyzed', 'stressed', 'pressured', 'drowning', 'exhausted', 'burdened'],
     modern_application: ['releasing the burden of guaranteeing future outcomes and anchoring energy in the immediate task'],
     caution: ['do not confuse detachment from outcomes with passivity or careless effort'],
     emotions: ['overwhelmed', 'anxious', 'paralyzed', 'stressed', 'pressured', 'drowning', 'exhausted', 'burdened'],
-    situations: ['competing priorities', 'fear of failing exams', 'career interview anxiety', 'workplace pressure', 'too much work', 'unrealistic deadlines'],
+    situations: ['competing priorities', 'fear of failing exams', 'career interview anxiety', 'workplace pressure', 'too much work', 'unrealistic deadlines', 'worrying about whether the result will be successful', 'focus on what i can control', 'struggling to focus on work', 'whether my efforts are paying off', 'consumed by the outcome'],
   },
 
   // 2. Equanimity in Ups and Downs (Emotional Volatility, Stress, Balance)

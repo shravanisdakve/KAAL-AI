@@ -5,9 +5,12 @@ import {
   isTechnicalTroubleshootingQuery,
   isCodingTechnicalQuery,
   isFactualTriviaQuery,
+  isOutcomeAttachmentQuery,
 } from './ragEngine.ts';
 import { detectHighRiskSafetySignal } from './safetyEngine.ts';
 import { isCasualGreeting } from './conversationalEngine.ts';
+
+export { isOutcomeAttachmentQuery };
 
 export type GuidanceDomain = 'emotional_guidance' | 'casual';
 
@@ -21,6 +24,7 @@ export type PrimaryIntent =
   | 'purpose'
   | 'meditation'
   | 'decision_support'
+  | 'outcome_attachment'
   | 'general_reflection';
 
 export interface StructuredClassificationResult {
@@ -97,7 +101,9 @@ export function deterministicClassificationFallback(
 
   let primaryIntent: PrimaryIntent = 'general_reflection';
 
-  if (nlp.intent === 'life_direction') {
+  if (isOutcomeAttachmentQuery(query)) {
+    primaryIntent = 'outcome_attachment';
+  } else if (nlp.intent === 'life_direction') {
     primaryIntent = 'career_confusion';
   } else if (nlp.intent === 'self_worth_criticism') {
     primaryIntent = 'self_worth';
@@ -116,7 +122,13 @@ export function deterministicClassificationFallback(
     primaryIntent = 'grief';
   } else if (nlp.intent === 'stress_relief') {
     primaryIntent = 'overwhelm';
-  } else if (nlp.intent === 'habit_discipline') {
+  } else if (
+    nlp.intent === 'habit_discipline' ||
+    qLower.includes('procrastinat') ||
+    qLower.includes("can't start") ||
+    qLower.includes('cannot start') ||
+    qLower.includes('putting off')
+  ) {
     primaryIntent = 'procrastination';
   } else if (nlp.intent === 'purpose_discovery') {
     primaryIntent = 'purpose';
@@ -129,6 +141,18 @@ export function deterministicClassificationFallback(
     qLower.includes('choose')
   ) {
     primaryIntent = 'decision_support';
+  }
+
+  if (primaryIntent === 'outcome_attachment') {
+    return {
+      domain: 'emotional_guidance',
+      primaryIntent: 'outcome_attachment',
+      detectedEmotions: nlp.emotions.length > 0 ? nlp.emotions : ['anxiety', 'pressure'],
+      topics: ['effort', 'outcomes', 'results', 'control', 'controllability'],
+      underlyingNeeds: ['present_focus', 'process_orientation', 'perspective', 'emotional_detachment_from_outcome'],
+      confidence: 0.9,
+      source: 'deterministic_fallback',
+    };
   }
 
   return {
@@ -156,6 +180,7 @@ export function classificationToNlpUnderstanding(
     relationship_conflict: 'relationship_conflict',
     grief: 'grief_processing',
     overwhelm: 'stress_relief',
+    outcome_attachment: 'action_vs_outcome',
     procrastination: 'habit_discipline',
     purpose: 'purpose_discovery',
     meditation: 'mindfulness_stillness',
@@ -179,6 +204,7 @@ export function classificationToCategory(
   switch (classification.primaryIntent) {
     case 'career_confusion':
     case 'decision_support':
+    case 'outcome_attachment':
       return 'Clarity';
     case 'overwhelm':
       return 'Stress';
@@ -267,11 +293,12 @@ Allowed domains:
 - "casual": simple greetings or shallow chit-chat
 
 Allowed primaryIntents:
+- "outcome_attachment": fixation on results, anxiety over success/failure, worrying if effort will pay off, comparing effort with expected outcomes, wanting to focus on what is controllable
 - "career_confusion": vocational crossroads, parental career expectations, choosing between career paths
 - "self_worth": feeling worthless, "good for nothing", enduring taunts/criticism, put-downs, imposter syndrome
 - "relationship_conflict": arguments, fights, marital/partner friction, interpersonal tension, parental comparison
 - "grief": death of a loved one, bereavement, mourning, profound heartbreak
-- "overwhelm": acute stress, burnout, cognitive overload, anxiety over outcomes
+- "overwhelm": acute stress, burnout, cognitive overload, general life overload
 - "procrastination": delay, inertia, struggling with habits or discipline
 - "purpose": existential questions, working hard without feeling meaning, calling
 - "meditation": restlessness, wandering mind, desire for stillness or mindfulness practice
@@ -301,6 +328,7 @@ Allowed primaryIntents:
         'purpose',
         'meditation',
         'decision_support',
+        'outcome_attachment',
         'general_reflection',
       ];
 

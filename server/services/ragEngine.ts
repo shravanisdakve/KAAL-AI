@@ -358,6 +358,65 @@ export function isSelfWorthCriticismQuery(text: string): boolean {
 }
 
 /**
+ * Detects queries centered on results attachment, outcome fixation,
+ * fear of effort not paying off, or struggling to focus on what is controllable.
+ */
+export function isOutcomeAttachmentQuery(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const lower = text.toLowerCase();
+
+  const explicitTriggers = [
+    'pay off',
+    'paying off',
+    'paid off',
+    'consumed by the outcome',
+    'consumed by outcome',
+    'obsessed with whether',
+    'whether i will succeed',
+    "whether i'll succeed",
+    'whether i succeed',
+    'thinking about my result',
+    'thinking about the result',
+    'worrying about whether the result',
+    'whether the result will be',
+    'focus on what i can actually control',
+    'focus on what i can control',
+    'what i can actually control',
+    'what is controllable',
+    'what is in my control',
+    'focus on the process, but',
+    'focus on the process but',
+    'checking whether my efforts',
+    'checking whether it was worth it',
+    'attachment to results',
+    'attachment to outcome',
+    'attachment to the fruit',
+    'fruits of my action',
+    'fruits of action',
+    'fruits of labor',
+  ];
+
+  for (const trigger of explicitTriggers) {
+    if (lower.includes(trigger)) return true;
+  }
+
+  const hasResultWord = /\b(result|results|outcome|outcomes)\b/i.test(lower);
+  const hasControlOrEffortWord = /\b(control|controllable|effort|efforts|work|studying)\b/i.test(lower);
+  const hasAnxietyOrFocusWord = /\b(worry|worrying|worried|anxious|anxiety|obsess|obsessed|focus|struggling to focus|can't focus|cant focus)\b/i.test(lower);
+  const hasSuccessOrFailureWord = /\b(success|successful|fail|failing|failure|payoff|worth it)\b/i.test(lower);
+
+  if (hasResultWord && (hasControlOrEffortWord || hasSuccessOrFailureWord) && hasAnxietyOrFocusWord) {
+    return true;
+  }
+
+  if (lower.includes('comparing my progress') || lower.includes('compare my progress')) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * LAYER 1: NLP Understanding & Linguistic Signal Inference
  * Infers emotional context, intent, topics, and psychological needs from linguistic cues.
  * Note: Emotions are inferred linguistic signals to guide conversational warmth,
@@ -497,6 +556,11 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
       intent = 'crisis_safety';
       topics.push('crisis_safety', 'immediate_support', 'emotional_distress', 'safety_helpline');
       needs.push('safety_check', 'crisis_helpline', 'human_connection', 'immediate_support');
+    } else if (isOutcomeAttachmentQuery(query)) {
+      intent = 'action_vs_outcome';
+      topics.push('effort', 'outcomes', 'results', 'control', 'controllability', 'process');
+      needs.push('present_focus', 'process_orientation', 'perspective', 'emotional_detachment_from_outcome');
+      emotions.push('anxiety', 'pressure', 'uncertainty');
     } else if (isLifeDirection) {
       intent = 'life_direction';
       topics.push('career', 'personal_path', 'choice', 'life_direction', 'svadharma', 'family_expectations');
@@ -579,6 +643,9 @@ export function extractNlpUnderstanding(query: string): NlpUnderstanding {
       needs.push('breath', 'patience_with_mind', 'quietness');
     } else if (
       lower.includes('procrastinat') ||
+      lower.includes("can't start") ||
+      lower.includes('cannot start') ||
+      lower.includes('putting off') ||
       lower.includes('routine') ||
       lower.includes('habit') ||
       lower.includes('lazy')
@@ -624,6 +691,11 @@ function embedQueryVector(query: string, nlp: NlpUnderstanding): number[] {
     weights.anxiety_overwhelm_burnout = 1.0;
     weights.outcome_detachment = 0.9;
     weights.action_effort_agency = 0.8;
+  } else if (nlp.intent === 'action_vs_outcome' || nlp.intent === 'outcome_attachment') {
+    weights.action_effort_agency = 1.0;
+    weights.outcome_detachment = 1.0;
+    weights.anxiety_overwhelm_burnout = 0.8;
+    weights.discipline_momentum = 0.7;
   } else if (nlp.intent === 'grief_processing') {
     weights.grief_bereavement_mourning = 1.0;
     weights.eternal_soul_immortality = 0.9;
@@ -646,6 +718,20 @@ function embedQueryVector(query: string, nlp: NlpUnderstanding): number[] {
   }
 
   // Token Reinforcement
+  if (
+    lower.includes('result') ||
+    lower.includes('results') ||
+    lower.includes('outcome') ||
+    lower.includes('outcomes') ||
+    lower.includes('pay off') ||
+    lower.includes('paying off') ||
+    lower.includes('what i can actually control') ||
+    lower.includes('what i can control') ||
+    lower.includes('controllable')
+  ) {
+    weights.action_effort_agency = Math.max(weights.action_effort_agency || 0, 1.0);
+    weights.outcome_detachment = Math.max(weights.outcome_detachment || 0, 1.0);
+  }
   if (
     lower.includes('which path') ||
     lower.includes('path in life') ||
@@ -777,6 +863,12 @@ function rerankCandidates(
       else if (shloka.id === 'BG2.47') intentMatch = 0.5;
     } else if (nlpUnderstanding.intent === 'stress_relief') {
       if (shloka.id === 'BG2.47' || shloka.id === 'BG2.48' || shloka.id === 'BG2.70') intentMatch = 1.0;
+    } else if (nlpUnderstanding.intent === 'action_vs_outcome' || nlpUnderstanding.intent === 'outcome_attachment') {
+      if (shloka.id === 'BG2.47') intentMatch = 1.0;
+      else if (shloka.id === 'BG2.48') intentMatch = 0.9;
+      else if (shloka.id === 'BG3.8' || shloka.id === 'BG18.37') intentMatch = 0.7;
+      else if (shloka.id === 'BG2.70') intentMatch = 0.6;
+      else intentMatch = 0.2;
     } else if (nlpUnderstanding.intent === 'grief_processing') {
       if (shloka.id === 'BG2.20' || shloka.id === 'BG2.14') intentMatch = 1.0;
     } else if (nlpUnderstanding.intent === 'relationship_harmony' || nlpUnderstanding.intent === 'relationship_conflict') {

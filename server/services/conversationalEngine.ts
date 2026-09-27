@@ -5,13 +5,16 @@ import {
   isCodingTechnicalQuery,
   isFactualTriviaQuery,
   isSelfWorthCriticismQuery,
+  isOutcomeAttachmentQuery,
 } from './ragEngine.ts';
+import { PrimaryIntent } from './queryClassifier.ts';
 
 export interface ConversationalSynthesisInput {
   question: string;
   category?: GuidanceCategory;
   detectedEmotion: string;
   intent?: string;
+  primaryIntent?: PrimaryIntent;
   topics?: string[];
   needs?: string[];
   shloka: GitaShloka | null;
@@ -70,7 +73,13 @@ export function isCasualGreeting(text: string): boolean {
 export function synthesizeEmpatheticFallback(
   input: ConversationalSynthesisInput
 ): ConversationalSynthesisOutput {
-  const { question, detectedEmotion, shloka, isShlokaRelevant, category, intent } = input;
+  const { question, detectedEmotion, shloka, isShlokaRelevant, category, intent, primaryIntent } = input;
+
+  const isOutcomeAttachment =
+    primaryIntent === 'outcome_attachment' ||
+    intent === 'action_vs_outcome' ||
+    intent === 'outcome_attachment' ||
+    isOutcomeAttachmentQuery(question);
 
   // 1. Casual / Non-dilemma queries (NO shloka forced)
   if (!isShlokaRelevant || !shloka) {
@@ -481,6 +490,26 @@ export function synthesizeEmpatheticFallback(
       };
     }
 
+    // 1J-2. Real Guidance Dilemma: Outcome Attachment / Action vs Results / Controllability
+    if (isOutcomeAttachment) {
+      return {
+        title: 'Focusing on Controllable Effort Over Uncertain Results',
+        summary:
+          'Constantly measuring your effort against the final result drains the focus needed to do the work. Separate what is yours to execute right now from the outcome you cannot guarantee.',
+        conversationalReply:
+          'You can care deeply about a successful result without making every moment of your work a referendum on whether you will ultimately succeed.\n\n' +
+          'When you are constantly worrying about whether your effort will pay off, your attention splits: half of your energy goes into doing the work, while the other half is consumed by outcome-checking, comparison, and fear of failure. This outcome-checking creates mental friction and makes the work feel heavier than it actually is.\n\n' +
+          'The crucial distinction is between what is controllable now and what is an outcome. You have agency over your effort, your craft, and the single hour right in front of you. You do not control external reception, evaluation timelines, or final success guarantees. Pour your full focus into the work itself, and treat the result as an eventual byproduct of sustained, disciplined effort rather than an emergency that needs solving right this second.',
+        reflectionPrompt:
+          'What is the single physical work task right in front of you that you can control completely for the next 25 minutes, setting aside whether it will succeed?',
+        steps: [
+          'Separate your task into two lists: "What I control right now" (my craft, focus, time) vs "What I cannot guarantee" (the reception, final result, timeline).',
+          'Close browser tabs, metrics, and progress checks that fuel outcome-checking or comparison.',
+          'Set a 25-minute timer and dedicate your full attention solely to the craft of the immediate task without evaluating its future success.',
+        ],
+      };
+    }
+
     // 1K. General Guidance Fallback (Respectful, Situation-Specific, Non-Greeting)
     const displayCategory = category || 'Clarity';
     const emotionNounMap: Record<string, string> = {
@@ -522,7 +551,28 @@ export function synthesizeEmpatheticFallback(
 
   // 2. Emotionally Tuned Guidance with RAG-Retrieved Shloka
   switch (shloka.id) {
-    case 'BG2.47': // Karmanye Vadhikaraste (Overwhelm & Anxiety of Results)
+    case 'BG2.47': // Karmanye Vadhikaraste (Overwhelm & Anxiety of Results / Outcome Attachment)
+      if (isOutcomeAttachment) {
+        return {
+          title: 'Focusing on Controllable Effort Over Uncertain Results',
+          summary:
+            'Constantly measuring your effort against the final result drains the focus needed to do the work. Separate what is yours to execute right now from the outcome you cannot guarantee.',
+          conversationalReply:
+            'You can care deeply about a successful result without making every moment of your work a referendum on whether you will ultimately succeed.\n\n' +
+            'When you are constantly worrying about whether your effort will pay off, your attention splits: half of your energy goes into doing the work, while the other half is consumed by outcome-checking, comparison, and fear of failure. This outcome-checking creates mental friction and makes the work feel heavier than it actually is.\n\n' +
+            'The crucial distinction is between what is controllable now and what is an outcome. You have complete jurisdiction over your effort, your focus, and the work right in front of you. You do not control external reception, evaluation timelines, or final success guarantees. Pour your full focus into the work itself, and treat the result as an eventual byproduct of sustained, disciplined effort rather than an emergency that needs solving right this second.',
+          whyThisRelates:
+            'The verse directly addresses the dilemma of effort versus results: your jurisdiction is entirely over the action itself, never over the fruits or outcomes. In your situation, it offers a grounded mental boundary—freeing you from the paralyzing need to guarantee success before you can focus on the work.',
+          reflectionPrompt:
+            'What is the single physical work task right in front of you that you can control completely for the next 25 minutes, setting aside whether it will succeed?',
+          steps: [
+            'Separate your task into two lists: "What I control right now" (my craft, focus, time) vs "What I cannot guarantee" (the reception, final result, timeline).',
+            'Close browser tabs, metrics, and progress checks that fuel outcome-checking or comparison.',
+            'Set a 25-minute timer and dedicate your full attention solely to the craft of the immediate task without evaluating its future success.',
+          ],
+        };
+      }
+
       return {
         title: 'Release the Burden of Outcomes & Return to Present Effort',
         summary:
@@ -900,7 +950,18 @@ CRITICAL INTELLECTUAL HONESTY & CONVERSATIONAL GUIDELINES:
    - Sanskrit: ${input.shloka.sanskrit}
    - Translation: "${input.shloka.translation}"
    - Core Wisdom: ${input.shloka.coreWisdom}
-   Provide an honest, thoughtful connection in "whyThisRelates": Explain why this ancient verse relates to what the user is describing (e.g. "The verse emphasizes X. For your situation, that can be approached as an invitation to reflect on Y rather than Z..."). Frame it as an invitation or reflection, not rigid dogma ("The Gita says X therefore do Y").`
+   Provide an honest, thoughtful connection in "whyThisRelates": Explain why this ancient verse relates to what the user is describing (e.g. "The verse emphasizes X. For your situation, that can be approached as an invitation to reflect on Y rather than Z..."). Frame it as an invitation or reflection, not rigid dogma ("The Gita says X therefore do Y").${
+      input.primaryIntent === 'outcome_attachment' || input.intent === 'action_vs_outcome' || isOutcomeAttachmentQuery(input.question)
+        ? `\n   CRITICAL ACTION VS OUTCOME / ATTACHMENT TO RESULTS FOCUS:
+   The user is struggling with outcome attachment, results anxiety, and difficulty focusing on present effort.
+   Ensure both "conversationalReply" and "whyThisRelates" directly address WORK + EFFORT + RESULTS + CONTROL.
+   - Discuss the distinction between effort and outcome (jurisdiction over action, not outcome guarantees).
+   - Address what is controllable now vs what is uncontrollable.
+   - Address how constant outcome-checking drains focus and creates friction.
+   - Give a practical way to return to the present task.
+   Avoid generic filler text like "I hear what you are carrying..." or "When uncertainty weighs on the mind...".`
+        : ''
+    }`
     : `NO shloka is relevant for this query. DO NOT force any Gita verse or Sanskrit quotes. Set "whyThisRelates" to null.
    CRITICAL GUIDANCE DECOUPLING RULE:
    Even though no shloka is attached, the user has presented a real dilemma or query. DO NOT return a generic greeting, do not welcome them as if it's turn 0, and do not ask what is on their mind—they have already shared their question.
@@ -919,6 +980,17 @@ CRITICAL INTELLECTUAL HONESTY & CONVERSATIONAL GUIDELINES:
    Directly address the burden of constant negative commentary, how hearing continuous taunts can cause one to internalize other people's harsh words as their own inner voice, and the vital necessity of separating others' judgments from one's intrinsic worth.
    Do NOT make absolute claims about why others criticize or taunt (do NOT say "they are projecting their fears or insecurities onto you"). Frame it objectively: people may criticize or taunt for reasons unrelated to the user's worth, but the user is not obligated to accept those words as truth or shape their identity around unconstructive hostility.
    Provide grounding perspective, emphasize healthy emotional boundaries and seeking supportive spaces, a reflective prompt on untangling external commentary from self-perception, and 3 low-friction, concrete steps to anchor in reality and protect their peace.`
+       : input.primaryIntent === 'outcome_attachment' || input.intent === 'action_vs_outcome' || isOutcomeAttachmentQuery(input.question)
+       ? `CRITICAL ACTION VS OUTCOME / ATTACHMENT TO RESULTS RULE:
+   The user is struggling with fixation on results, worrying whether their effort will pay off, anxiety about success or failure, inability to focus on present effort, comparing effort with expected outcomes, or wanting to focus on what they can actually control.
+   The generated response must directly discuss:
+   - The distinction between effort and outcome (agency over present effort vs lack of guarantee over final outcomes).
+   - What is controllable now vs what is an uncontrollable outcome.
+   - How constant outcome-checking, comparison, and result-fixation drains focus and makes work heavier.
+   - One practical way to return attention to the present craft/task (e.g. 25-minute focused interval, separating effort from outcome evaluation).
+   Avoid generic filler text such as "I hear what you are carrying...", "When uncertainty weighs on the mind...", "Take a breath...", or "Take one grounded action..." unless genuinely useful.
+   The response must feel specifically about: WORK + EFFORT + RESULTS + CONTROL.
+   Example tone: "You can care deeply about the result without making every moment of your work a referendum on whether you will succeed. For now, separate the work that is yours to do from the outcome you cannot guarantee..."`
        : `Provide deep, compassionate, situation-specific guidance, validating their exact dilemma (e.g. comparison and parental expectations, feeling not good enough, self-worth and boundaries, relationship conflict, career confusion, grief, stress, technical frustration, household tension), addressing their emotions (${input.detectedEmotion}), topic (${(input.topics || []).join(', ')}), and psychological needs (${(input.needs || []).join(', ')}). Offer clear perspective, a focused reflection prompt, and 3 concrete, low-friction next steps for today.`
    }`
 }

@@ -11,6 +11,7 @@ import {
   isCodingTechnicalQuery,
   isFactualTriviaQuery,
   isSelfWorthCriticismQuery,
+  isOutcomeAttachmentQuery,
 } from './ragEngine.ts';
 import {
   generateConversationalGuidance,
@@ -674,8 +675,47 @@ function getFrameworkSteps(
   stepsToUse: string[],
   isTechnical: boolean,
   isCoding: boolean,
-  isSelfWorth?: boolean
+  isSelfWorth?: boolean,
+  isOutcomeAttachment?: boolean
 ): TacticalStep[] {
+  if (isOutcomeAttachment) {
+    return [
+      {
+        id: 1,
+        title: stepsToUse[0] || 'Separate Controllable Effort from Outcome',
+        status: 'Active Focus',
+        description:
+          'Audit where your mental energy is going. Delineate what is within your direct agency right now from future results you cannot guarantee.',
+        checklist: [
+          'List what is physically in your control for the next hour (focus, code, writing)',
+          'Consciously set aside external evaluation, success metrics, and timeline worries',
+        ],
+      },
+      {
+        id: 2,
+        title: stepsToUse[1] || 'Silence Outcome-Checking Loops',
+        status: 'Pending',
+        description:
+          'Close tabs, analytics, and comparison channels that trigger anxiety about whether your work will succeed.',
+        checklist: [
+          'Close metrics, dashboards, and social comparison tabs',
+          'Notice when the urge arises to check results and pause for 3 breaths',
+        ],
+      },
+      {
+        id: 3,
+        title: stepsToUse[2] || 'Engage in a Protected 25-Minute Work Sprint',
+        status: 'Pending',
+        description:
+          'Dedicate yourself entirely to the immediate craft of the work without evaluating its ultimate success.',
+        checklist: [
+          'Set a 25-minute timer dedicated solely to the craft',
+          'Measure success by full presence during the sprint, not the distant outcome',
+        ],
+      },
+    ];
+  }
+
   if (isTechnical) {
     return [
       {
@@ -861,6 +901,11 @@ export async function runGuidanceEngine(
     ragResult.nlpUnderstanding.intent === 'self_worth_criticism' ||
     isSelfWorthCriticismQuery(question);
 
+  const isOutcomeAttachment =
+    (classification && classification.primaryIntent === 'outcome_attachment') ||
+    ragResult.nlpUnderstanding.intent === 'action_vs_outcome' ||
+    isOutcomeAttachmentQuery(question);
+
   if (isPracticalOrGreeting) {
     resolvedCategory = 'General Reflection';
   } else if (isSelfWorth) {
@@ -891,6 +936,7 @@ export async function runGuidanceEngine(
     category: resolvedCategory,
     detectedEmotion: ragResult.detectedEmotion,
     intent: ragResult.nlpUnderstanding.intent,
+    primaryIntent: classification?.primaryIntent,
     topics: ragResult.nlpUnderstanding.topics,
     needs: ragResult.nlpUnderstanding.needs,
     shloka: ragResult.shloka,
@@ -912,7 +958,8 @@ export async function runGuidanceEngine(
     stepsToUse,
     isTechnical,
     isCoding,
-    isSelfWorth
+    isSelfWorth,
+    isOutcomeAttachment
   );
 
   // 6. Determine whether situation genuinely benefits from a contemplative visual
@@ -964,6 +1011,8 @@ export async function runGuidanceEngine(
           ? 'Technical Programming & Concept Clarification'
           : isSelfWorth
           ? 'Reclaiming Self-Worth Beyond External Criticism'
+          : isOutcomeAttachment
+          ? 'Focusing on Controllable Effort Over Results'
           : pattern.name,
       score: topCategory.score,
       matchedKeywords: topCategory.matchedKeywords,
@@ -1035,6 +1084,11 @@ export function runGuidanceEngineSync(question: string): {
     ragResult.nlpUnderstanding.intent === 'self_worth_criticism' ||
     isSelfWorthCriticismQuery(question);
 
+  const isOutcomeAttachment =
+    (classification && classification.primaryIntent === 'outcome_attachment') ||
+    ragResult.nlpUnderstanding.intent === 'action_vs_outcome' ||
+    isOutcomeAttachmentQuery(question);
+
   if (isPracticalOrGreeting) {
     resolvedCategory = 'General Reflection';
   } else if (isSelfWorth) {
@@ -1046,6 +1100,7 @@ export function runGuidanceEngineSync(question: string): {
     category: resolvedCategory,
     detectedEmotion: ragResult.detectedEmotion,
     intent: ragResult.nlpUnderstanding.intent,
+    primaryIntent: classification?.primaryIntent,
     topics: ragResult.nlpUnderstanding.topics,
     needs: ragResult.nlpUnderstanding.needs,
     shloka: ragResult.shloka,
@@ -1065,7 +1120,8 @@ export function runGuidanceEngineSync(question: string): {
     stepsToUse,
     isTechnical,
     isCoding,
-    isSelfWorth
+    isSelfWorth,
+    isOutcomeAttachment
   );
 
   const visualDecision = shouldShowSituationVisual({
@@ -1118,6 +1174,8 @@ export function runGuidanceEngineSync(question: string): {
             ? 'Technical Programming & Concept Clarification'
             : isSelfWorth
             ? 'Reclaiming Self-Worth Beyond External Criticism'
+            : isOutcomeAttachment
+            ? 'Focusing on Controllable Effort Over Results'
             : pattern.name,
         score: topCategory.score,
         matchedKeywords: topCategory.matchedKeywords,

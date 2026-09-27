@@ -56,31 +56,38 @@ export const Composer: React.FC<ComposerProps> = ({
     }
   };
 
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasSpeech = Boolean(
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      );
+      setIsSpeechSupported(hasSpeech);
+    }
+  }, []);
+
   const toggleVoiceRecording = () => {
-    // Check for browser speech recognition
     const windowWithSpeech = window as unknown as {
       SpeechRecognition?: any;
       webkitSpeechRecognition?: any;
     };
     const SpeechRecognition =
-      windowWithSpeech.SpeechRecognition ||
-      windowWithSpeech.webkitSpeechRecognition;
+      windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      // Gentle mock/simulation feedback if browser doesn't expose speech recognition
-      if (!isRecording) {
-        setIsRecording(true);
-        setTimeout(() => {
-          setQuestion((prev) =>
-            prev
-              ? `${prev} How can I structure competing priorities with clarity?`
-              : 'How can I structure competing priorities with clarity?'
-          );
-          setIsRecording(false);
-        }, 1200);
-      } else {
-        setIsRecording(false);
+      setValidationError('Voice recognition is not supported in this browser.');
+      return;
+    }
+
+    if (isRecording && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
       }
+      setIsRecording(false);
       return;
     }
 
@@ -88,28 +95,38 @@ export const Composer: React.FC<ComposerProps> = ({
       const recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
+      recognition.continuous = false;
+      recognitionRef.current = recognition;
 
-      if (!isRecording) {
+      recognition.onstart = () => {
         setIsRecording(true);
-        recognition.start();
+        setValidationError(null);
+      };
 
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setQuestion((prev) => (prev ? `${prev} ${transcript}` : transcript));
-          setIsRecording(false);
-        };
-
-        recognition.onerror = () => {
-          setIsRecording(false);
-        };
-
-        recognition.onend = () => {
-          setIsRecording(false);
-        };
-      } else {
+      recognition.onresult = (event: any) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript) {
+          setQuestion((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
+        }
         setIsRecording(false);
-      }
-    } catch {
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsRecording(false);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setValidationError('Microphone permission was denied. Please allow microphone access in your browser.');
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          setValidationError('Could not capture audio. Please try again or type your question.');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.warn('Speech recognition start failed:', err);
       setIsRecording(false);
     }
   };
@@ -146,17 +163,19 @@ export const Composer: React.FC<ComposerProps> = ({
 
         {/* Action Buttons in Bottom Right */}
         <div className="absolute right-2.5 sm:right-3.5 bottom-2.5 sm:bottom-3.5 flex items-center gap-1.5 sm:gap-2">
-          {/* Microphone Button */}
-          <button
-            type="button"
-            onClick={toggleVoiceRecording}
-            className={`p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer ${
-              isRecording ? 'text-red-500 bg-red-50 animate-pulse' : ''
-            }`}
-            title={isRecording ? 'Listening...' : 'Voice Dictation'}
-          >
-            {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
-          </button>
+          {/* Microphone Button (shown only when browser supports Web Speech API) */}
+          {isSpeechSupported && (
+            <button
+              type="button"
+              onClick={toggleVoiceRecording}
+              className={`p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer ${
+                isRecording ? 'text-red-500 bg-red-50 animate-pulse' : ''
+              }`}
+              title={isRecording ? 'Listening... (click to stop)' : 'Voice Dictation'}
+            >
+              {isRecording ? <MicOff size={17} /> : <Mic size={17} />}
+            </button>
+          )}
 
           {/* Send Button */}
           <button

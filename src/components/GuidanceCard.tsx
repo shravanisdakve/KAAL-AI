@@ -63,21 +63,39 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
         <span className="text-xs text-gray-400">{timestamp}</span>
 
         {response.detectedEmotion && (
-          <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span
+            className={`ml-auto inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+              response.safetyFlag
+                ? 'bg-rose-50 text-rose-800 border border-rose-200/80'
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                response.safetyFlag ? 'bg-rose-600 animate-pulse' : 'bg-emerald-500 animate-pulse'
+              }`}
+            />
             <span>{response.detectedEmotion}</span>
           </span>
         )}
       </div>
 
       {/* Main Guidance Card — Clean, Warm, Spacious */}
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-stone-200/80 p-4 sm:p-6 md:p-8 shadow-xs min-w-0">
+      <div
+        className={`bg-white rounded-xl sm:rounded-2xl border ${
+          response.safetyFlag ? 'border-rose-200/90 shadow-sm ring-1 ring-rose-100' : 'border-stone-200/80 shadow-xs'
+        } p-4 sm:p-6 md:p-8 min-w-0`}
+      >
         {/* Section 1: HUMAN CONVERSATIONAL GUIDANCE */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-5 sm:gap-6 pb-6 border-b border-stone-100 min-w-0">
           <div className="flex-1 min-w-0 space-y-3.5">
             <div className="flex items-center gap-2 select-none flex-wrap min-w-0">
-              <span className="text-[11px] font-bold tracking-widest text-[#155e45] uppercase shrink-0">
-                GUIDANCE FOR YOU
+              <span
+                className={`text-[11px] font-bold tracking-widest uppercase shrink-0 ${
+                  response.safetyFlag ? 'text-rose-800' : 'text-[#155e45]'
+                }`}
+              >
+                {response.safetyFlag ? 'IMMEDIATE SUPPORT' : 'GUIDANCE FOR YOU'}
               </span>
               <span className="text-stone-300">·</span>
               <span className="text-xs text-stone-500 font-medium break-words">
@@ -194,27 +212,39 @@ export const GuidanceCard: React.FC<GuidanceCardProps> = ({
           </div>
         )}
 
-        {/* Section 3: A MOMENT TO REFLECT */}
-        <div className="py-5 sm:py-6 border-b border-stone-100 min-w-0">
-          <span className="block text-[11px] font-bold tracking-widest text-[#155e45] uppercase mb-2 select-none">
-            A MOMENT TO REFLECT
-          </span>
-          <div className="pl-3 sm:pl-4 border-l-2 border-emerald-600/50 py-1.5 bg-stone-50/50 rounded-r-xl min-w-0">
-            <p className="text-[14px] sm:text-[15px] md:text-[16px] text-stone-800 font-normal italic leading-relaxed break-words">
-              "{reflectionThought}"
-            </p>
+        {/* Section 3: A MOMENT TO REFLECT (Omitted on safety crises: no ordinary reflection card) */}
+        {!response.safetyFlag && (
+          <div className="py-5 sm:py-6 border-b border-stone-100 min-w-0">
+            <span className="block text-[11px] font-bold tracking-widest text-[#155e45] uppercase mb-2 select-none">
+              A MOMENT TO REFLECT
+            </span>
+            <div className="pl-3 sm:pl-4 border-l-2 border-emerald-600/50 py-1.5 bg-stone-50/50 rounded-r-xl min-w-0">
+              <p className="text-[14px] sm:text-[15px] md:text-[16px] text-stone-800 font-normal italic leading-relaxed break-words">
+                "{reflectionThought}"
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Section 4: A SIMPLE NEXT STEP */}
+        {/* Section 4: A SIMPLE NEXT STEP / IMMEDIATE SAFETY ACTIONS */}
         <div className="pt-5 sm:pt-6 min-w-0">
-          <span className="block text-[11px] font-bold tracking-widest text-[#155e45] uppercase mb-3 sm:mb-4 select-none">
-            A SIMPLE NEXT STEP TODAY
+          <span
+            className={`block text-[11px] font-bold tracking-widest uppercase mb-3 sm:mb-4 select-none ${
+              response.safetyFlag ? 'text-rose-800' : 'text-[#155e45]'
+            }`}
+          >
+            {response.safetyFlag ? 'IMMEDIATE SAFETY ACTIONS' : 'A SIMPLE NEXT STEP TODAY'}
           </span>
           <div className="space-y-3 min-w-0">
             {nextSteps.slice(0, 3).map((stepText, idx) => (
               <div key={idx} className="flex items-start gap-2.5 sm:gap-3 min-w-0">
-                <span className="text-[11px] font-mono font-medium text-emerald-800 bg-[#eaf4ee] px-2 py-0.5 rounded-md shrink-0 select-none mt-0.5">
+                <span
+                  className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-md shrink-0 select-none mt-0.5 ${
+                    response.safetyFlag
+                      ? 'bg-rose-50 text-rose-800 border border-rose-200/60'
+                      : 'bg-[#eaf4ee] text-emerald-800'
+                  }`}
+                >
                   {String(idx + 1).padStart(2, '0')}
                 </span>
                 <p className="text-[13px] sm:text-[14px] md:text-[15px] text-gray-700 leading-relaxed min-w-0 break-words">

@@ -1172,6 +1172,96 @@ async function runTestSuite() {
     );
   });
 
+  await test('Final Quality Suite: Query A - Action vs Outcome / Attachment to Results', async () => {
+    const query = "I’m struggling to focus on my work because I'm constantly worrying about whether the result will be successful. How can I focus on what I can actually control?";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'outcome_attachment');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.response.meta?.classification?.primaryIntent, 'outcome_attachment');
+    const reply = result.response.conversationalReply.toLowerCase();
+    assert.ok(
+      reply.includes('effort') || reply.includes('control') || reply.includes('outcome') || reply.includes('result'),
+      'Reply must specifically address effort, control, outcomes, or results'
+    );
+    assert.ok(!reply.includes('i hear what you are carrying'), 'Reply must avoid generic filler "I hear what you are carrying"');
+    assert.ok(!reply.includes('when uncertainty weighs on the mind'), 'Reply must avoid generic filler "When uncertainty weighs on the mind"');
+    if (result.response.shloka) {
+      assert.strictEqual(result.response.shloka.id, 'BG2.47');
+    }
+  });
+
+  await test('Final Quality Suite: Query B - Checking if efforts are paying off', async () => {
+    const query = "I've been working hard for months and keep checking whether my efforts are paying off.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'outcome_attachment');
+  });
+
+  await test('Final Quality Suite: Query C - Comparing progress with others', async () => {
+    const query = "I can't stop comparing my progress with everyone else's.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.ok(
+      classification.primaryIntent === 'outcome_attachment' || classification.primaryIntent === 'self_worth',
+      `Expected outcome_attachment or self_worth, got: ${classification.primaryIntent}`
+    );
+  });
+
+  await test('Final Quality Suite: Query D - Career dilemma is NOT outcome_attachment', async () => {
+    const query = "I'm confused whether I should study medicine or design.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'career_confusion');
+    assert.notStrictEqual(classification.primaryIntent, 'outcome_attachment');
+  });
+
+  await test('Final Quality Suite: Query E - Procrastination is NOT outcome_attachment', async () => {
+    const query = "I can't start my project even though I know what I need to do.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, true);
+
+    const classification = classifyQuerySync(query);
+    assert.strictEqual(classification.primaryIntent, 'procrastination');
+    assert.notStrictEqual(classification.primaryIntent, 'outcome_attachment');
+  });
+
+  await test('Final Quality Suite: Query F - Factual query bypasses classifier', async () => {
+    const query = 'What is the capital of France?';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'factual_inquiry');
+  });
+
+  await test('Final Quality Suite: Query G - Technical troubleshooting bypasses classifier', async () => {
+    const query = "My laptop is overheating and I'm stressed.";
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'technical_troubleshooting');
+  });
+
+  await test('Final Quality Suite: Query H - High risk safety guard terminates immediately', async () => {
+    const query = 'I sometimes wonder if everyone would be better off without me.';
+    const eligibility = isEligibleForClassifier(query);
+    assert.strictEqual(eligibility.eligible, false);
+    assert.strictEqual(eligibility.reason, 'high_risk_safety');
+
+    const result = await runGuidanceEngine(query);
+    assert.strictEqual(result.response.safetyFlag, true);
+    assert.strictEqual(result.response.isShlokaRelevant, false);
+    assert.strictEqual(result.response.shloka, null);
+    assert.strictEqual(result.response.situationVisual, null);
+  });
+
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);
   if (failed > 0) {
     process.exit(1);
