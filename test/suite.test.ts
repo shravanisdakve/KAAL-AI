@@ -13,6 +13,13 @@ import {
   isEligibleForClassifier,
   clearClassifierCache,
 } from '../server/services/queryClassifier.ts';
+import {
+  isSpeechRecognitionSupported,
+  getSpeechRecognitionConstructor,
+  formatSpeechError,
+  appendTranscript,
+  processSpeechResults,
+} from '../src/utils/speechRecognition.ts';
 
 async function runTestSuite() {
   console.log('\n🧪 Running KAAL AI Comprehensive Test Suite...\n');
@@ -1260,6 +1267,192 @@ async function runTestSuite() {
     assert.strictEqual(result.response.isShlokaRelevant, false);
     assert.strictEqual(result.response.shloka, null);
     assert.strictEqual(result.response.situationVisual, null);
+  });
+
+  // ========================================================
+  // Speech Recognition Unit Tests
+  // ========================================================
+  await test('Speech Recognition: detects supported browser when SpeechRecognition exists and instantiates', () => {
+    const origWindow = (globalThis as any).window;
+    try {
+      class MockSpeechRecognition {
+        start() {}
+        stop() {}
+        abort() {}
+      }
+      (globalThis as any).window = {
+        webkitSpeechRecognition: MockSpeechRecognition,
+      };
+
+      assert.strictEqual(isSpeechRecognitionSupported(), true);
+      assert.strictEqual(getSpeechRecognitionConstructor(), MockSpeechRecognition);
+    } finally {
+      (globalThis as any).window = origWindow;
+    }
+  });
+
+  await test('Speech Recognition: detects unsupported browser when API is missing or constructor throws', () => {
+    const origWindow = (globalThis as any).window;
+    try {
+      // 1. Missing API
+      (globalThis as any).window = {};
+      assert.strictEqual(isSpeechRecognitionSupported(), false);
+      assert.strictEqual(getSpeechRecognitionConstructor(), null);
+
+      // 2. Faulty / throwing constructor
+      (globalThis as any).window = {
+        SpeechRecognition: class FaultyRecognition {
+          constructor() {
+            throw new Error('Not allowed in this environment');
+          }
+        },
+      };
+      assert.strictEqual(isSpeechRecognitionSupported(), false);
+    } finally {
+      (globalThis as any).window = origWindow;
+    }
+  });
+
+  await test('Speech Recognition: appends recognized speech with single space to existing text', () => {
+    // Both existing and new
+    assert.strictEqual(
+      appendTranscript('Help me with my career', 'I feel confused'),
+      'Help me with my career I feel confused'
+    );
+
+    // Existing with trailing space
+    assert.strictEqual(
+      appendTranscript('Help me with my career   ', 'I feel confused'),
+      'Help me with my career I feel confused'
+    );
+
+    // Empty existing text
+    assert.strictEqual(
+      appendTranscript('', 'I feel confused'),
+      'I feel confused'
+    );
+
+    // Empty new text
+    assert.strictEqual(
+      appendTranscript('Help me with my career', ''),
+      'Help me with my career'
+    );
+  });
+
+  await test('Speech Recognition: interim and final result handling prevents duplicate transcripts', () => {
+    // Simulated event 1: first word finalized, second word in-progress (interim)
+    const event1Results: any = [
+      { isFinal: true, 0: { transcript: 'I am' } },
+      { isFinal: false, 0: { transcript: 'struggling' } },
+    ];
+    event1Results.length = 2;
+
+    const res1 = processSpeechResults(event1Results, 0);
+    assert.strictEqual(res1.finalSegment, 'I am');
+    assert.strictEqual(res1.interimSegment, 'struggling');
+
+    // Simulated event 2: resultIndex = 1, previously interim chunk is now finalized, new interim appears
+    const event2Results: any = [
+      { isFinal: true, 0: { transcript: 'I am' } },
+      { isFinal: true, 0: { transcript: 'struggling with work' } },
+      { isFinal: false, 0: { transcript: 'today' } },
+    ];
+    event2Results.length = 3;
+
+    // Passing resultIndex = 1 processes only the new chunk, preventing re-finalizing "I am"
+    const res2 = processSpeechResults(event2Results, 1);
+    assert.strictEqual(res2.finalSegment, 'struggling with work');
+    assert.strictEqual(res2.interimSegment, 'today');
+
+    const totalCommitted = appendTranscript(res1.finalSegment, res2.finalSegment);
+    assert.strictEqual(totalCommitted, 'I am struggling with work');
+  });
+
+  await test('Speech Recognition: formats error messages according to specifications without raw errors', () => {
+    // not-allowed
+    assert.strictEqual(
+      formatSpeechError('not-allowed'),
+      'Microphone permission was denied. Please allow microphone access in your browser.'
+    );
+
+    // audio-capture
+    assert.strictEqual(
+      formatSpeechError('audio-capture'),
+      'Your microphone could not be accessed. Check your browser and microphone settings.'
+    );
+
+    // no-speech
+    assert.strictEqual(
+      formatSpeechError('no-speech'),
+      "Didn't hear anything. Try speaking again."
+    );
+
+    // network
+    assert.strictEqual(
+      formatSpeechError('network'),
+      "Speech recognition isn't available in this browser right now. Try Chrome or Edge."
+    );
+
+    // service-not-allowed
+    assert.strictEqual(
+      formatSpeechError('service-not-allowed'),
+      "Speech recognition isn't available in this browser right now. Try Chrome or Edge."
+    );
+
+    // language-not-supported
+    assert.strictEqual(
+      formatSpeechError('language-not-supported'),
+      'Selected language is not supported by your browser.'
+    );
+
+    // aborted (must be silent null)
+    assert.strictEqual(formatSpeechError('aborted'), null);
+
+    // default fallback
+    assert.strictEqual(
+      formatSpeechError('unknown-code'),
+      'Could not capture audio. Please try again or type your question.'
+    );
+  });
+
+  await test('Speech Recognition: lifecycle, stop, abort, and cleanup', () => {
+    let started = false;
+    let stopped = false;
+    let aborted = false;
+
+    class TestRecognition {
+      continuous = false;
+      interimResults = true;
+      lang = 'en-US';
+      onstart: (() => void) | null = null;
+      onresult: ((ev: any) => void) | null = null;
+      onerror: ((ev: any) => void) | null = null;
+      onend: (() => void) | null = null;
+
+      start() {
+        started = true;
+        this.onstart?.();
+      }
+      stop() {
+        stopped = true;
+        this.onend?.();
+      }
+      abort() {
+        aborted = true;
+        this.onerror?.({ error: 'aborted' });
+        this.onend?.();
+      }
+    }
+
+    const rec = new TestRecognition();
+    rec.start();
+    assert.strictEqual(started, true);
+
+    rec.stop();
+    assert.strictEqual(stopped, true);
+
+    rec.abort();
+    assert.strictEqual(aborted, true);
   });
 
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);
