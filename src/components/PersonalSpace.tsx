@@ -19,7 +19,13 @@ const USER_PROFILE = {
 export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = false }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'menu' | 'account' | 'settings'>('menu');
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('kaal_guidance_updates') !== 'false';
+    } catch {
+      return true;
+    }
+  });
   const [theme, setTheme] = useState<Theme>('light');
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -260,10 +266,21 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
                 </span>
                 <button
                   type="button"
-                  onClick={() => setNotificationsEnabled((prev) => !prev)}
+                  onClick={() => {
+                    setNotificationsEnabled((prev) => {
+                      const next = !prev;
+                      try {
+                        localStorage.setItem('kaal_guidance_updates', next ? 'true' : 'false');
+                      } catch (e) {}
+                      return next;
+                    });
+                  }}
                   className="w-full bg-gray-50/80 hover:bg-gray-100/80 rounded-xl p-2.5 border border-gray-100 flex items-center justify-between transition cursor-pointer text-left"
                 >
-                  <span className="text-xs font-medium text-gray-800">Guidance Updates</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-gray-800">Guidance Updates</span>
+                    <span className="text-[10px] text-gray-500 font-normal mt-0.5">Daily reflection & contemplation prompts</span>
+                  </div>
                   <span
                     className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${
                       notificationsEnabled

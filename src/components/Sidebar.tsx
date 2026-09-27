@@ -230,7 +230,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Personal Space Rail Footer Card */}
-      <div className="p-3 border-t border-gray-200/80 mt-auto bg-[#fafbfa]">
+      <div className="p-3 border-t border-gray-200/80 mt-auto bg-transparent">
         <PersonalSpace isCollapsed={false} />
       </div>
     </div>
