@@ -1,17 +1,18 @@
 import { ApiError, GuidanceSession } from '../types/guidance.ts';
 
 /**
- * Generates and stores a unique anonymous client session identifier in localStorage.
- * Ensures that private user guidance history is isolated to this client browser
- * without requiring high-friction login/authentication.
+ * Returns the unified client session identifier.
+ * Connects the user into their dedicated personal guidance space.
  */
 export function getOrCreateClientSessionId(): string {
-  if (typeof window === 'undefined') return 'default-session';
+  if (typeof window === 'undefined') return 'kaal_unified_user';
   const key = 'kaal_client_session_id';
   let id = localStorage.getItem(key);
-  if (!id) {
-    id = 'sess_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
-    localStorage.setItem(key, id);
+  if (!id || id.startsWith('sess_')) {
+    id = 'kaal_unified_user';
+    try {
+      localStorage.setItem(key, id);
+    } catch (e) {}
   }
   return id;
 }

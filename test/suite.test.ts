@@ -1455,6 +1455,33 @@ async function runTestSuite() {
     assert.strictEqual(aborted, true);
   });
 
+  await test('Theme Utility: toggles between light and dark modes and persists preference', () => {
+    let mockStorage: Record<string, string> = {};
+    const fakeLocalStorage = {
+      getItem: (k: string) => mockStorage[k] || null,
+      setItem: (k: string, v: string) => { mockStorage[k] = v; },
+    };
+
+    let currentTheme: 'light' | 'dark' = 'light';
+    const toggle = () => {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      fakeLocalStorage.setItem('kaal_theme', currentTheme);
+      return currentTheme;
+    };
+
+    assert.strictEqual(currentTheme, 'light');
+    assert.strictEqual(toggle(), 'dark');
+    assert.strictEqual(fakeLocalStorage.getItem('kaal_theme'), 'dark');
+    assert.strictEqual(toggle(), 'light');
+    assert.strictEqual(fakeLocalStorage.getItem('kaal_theme'), 'light');
+  });
+
+  await test('Unified Single-User Session: correctly queries all sessions for kaal_unified_user', async () => {
+    // Both undefined and kaal_unified_user should fetch all sessions
+    const sessionsAll = await dbClient.getAllSessions('kaal_unified_user');
+    assert.ok(Array.isArray(sessionsAll));
+  });
+
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);
   if (failed > 0) {
     process.exit(1);

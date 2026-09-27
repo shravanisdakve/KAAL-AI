@@ -1,27 +1,46 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SlidersHorizontal, User, Settings, X, ArrowLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, User, Settings, X, ArrowLeft, ChevronRight, Sun, Moon } from 'lucide-react';
+import { getStoredTheme, toggleTheme, Theme } from '../utils/theme.ts';
 
 interface PersonalSpaceProps {
   isCollapsed?: boolean;
 }
 
-// Anonymous guest session specification
-const DEMO_USER = {
-  fullName: 'Guest User',
-  displayName: 'Guest Session',
-  initials: 'GS',
-  email: 'anonymous@kaalai.in',
-  plan: 'Private Session',
-  accountType: 'Anonymous Session',
+// Unified personal space profile
+const USER_PROFILE = {
+  fullName: 'Seeker',
+  displayName: 'Personal Space',
+  initials: 'KA',
+  email: 'seeker@kaalai.in',
+  plan: 'Active Member',
+  accountType: 'Personal Space',
 };
 
 export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = false }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'menu' | 'account' | 'settings'>('menu');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [theme, setTheme] = useState<Theme>('light');
 
   const menuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setTheme(getStoredTheme());
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ theme: Theme }>;
+      if (customEvent.detail?.theme) {
+        setTheme(customEvent.detail.theme);
+      }
+    };
+    window.addEventListener('kaal-theme-change', handler);
+    return () => window.removeEventListener('kaal-theme-change', handler);
+  }, []);
+
+  const handleToggleTheme = () => {
+    const next = toggleTheme();
+    setTheme(next);
+  };
 
   // Close popover and reset view on click outside
   useEffect(() => {
@@ -106,13 +125,13 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
             <div className="py-3 space-y-3 text-xs">
               <div className="flex flex-col items-center text-center pb-2.5 border-b border-gray-100">
                 <div className="w-12 h-12 rounded-full bg-[#1c2226] text-white flex items-center justify-center text-sm font-bold shadow-xs mb-2 select-none">
-                  {DEMO_USER.initials}
+                  {USER_PROFILE.initials}
                 </div>
                 <h4 className="font-semibold text-gray-900 text-sm leading-tight">
-                  {DEMO_USER.fullName}
+                  {USER_PROFILE.fullName}
                 </h4>
                 <p className="text-[11px] text-gray-500 mt-0.5">
-                  {DEMO_USER.email}
+                  {USER_PROFILE.email}
                 </p>
               </div>
 
@@ -125,7 +144,7 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
                   <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
                     <span className="block text-[10px] text-gray-500 leading-tight">Name</span>
                     <span className="block text-xs font-medium text-gray-900 mt-0.5">
-                      {DEMO_USER.fullName}
+                      {USER_PROFILE.fullName}
                     </span>
                   </div>
                 </div>
@@ -135,9 +154,9 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
                     Plan
                   </span>
                   <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-700">Plan</span>
+                    <span className="text-xs font-medium text-gray-700">Access</span>
                     <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-                      {DEMO_USER.plan}
+                      {USER_PROFILE.plan}
                     </span>
                   </div>
                 </div>
@@ -149,7 +168,7 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
                   <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 flex items-center justify-between">
                     <span className="text-xs font-medium text-gray-700">Type</span>
                     <span className="text-[11px] font-medium text-gray-600 bg-gray-200/70 px-2 py-0.5 rounded-md">
-                      {DEMO_USER.accountType}
+                      {USER_PROFILE.accountType}
                     </span>
                   </div>
                 </div>
@@ -210,13 +229,29 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
                 <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
                   Appearance
                 </span>
-                <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-800">Theme</span>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-700 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Light
+                <button
+                  type="button"
+                  onClick={handleToggleTheme}
+                  className="w-full bg-gray-50/80 hover:bg-gray-100/80 rounded-xl p-2.5 border border-gray-100 flex items-center justify-between transition cursor-pointer text-left"
+                  title="Click to toggle theme"
+                >
+                  <div className="flex items-center gap-2">
+                    {theme === 'dark' ? (
+                      <Moon size={15} className="text-amber-400" />
+                    ) : (
+                      <Sun size={15} className="text-amber-500" />
+                    )}
+                    <span className="text-xs font-medium text-gray-800">Theme</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full border border-gray-200 bg-white text-gray-700">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        theme === 'dark' ? 'bg-amber-400' : 'bg-emerald-500'
+                      }`}
+                    />
+                    {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
                   </span>
-                </div>
+                </button>
               </div>
 
               <div>
@@ -287,18 +322,18 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-[#1c2226] text-white flex items-center justify-center text-xs font-semibold select-none shadow-2xs">
-                  {DEMO_USER.initials}
+                  {USER_PROFILE.initials}
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-xs font-semibold text-gray-900 leading-tight">
-                    Personal Space
+                    {USER_PROFILE.displayName}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[11px] text-gray-600 font-medium">
-                      {DEMO_USER.displayName}
+                      {USER_PROFILE.fullName}
                     </span>
                     <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.2 rounded-md">
-                      {DEMO_USER.plan}
+                      {USER_PROFILE.plan}
                     </span>
                   </div>
                 </div>
@@ -327,7 +362,7 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
                   <span>Account</span>
                 </div>
                 <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                  {DEMO_USER.initials}
+                  {USER_PROFILE.initials}
                 </span>
               </button>
 
@@ -368,9 +403,9 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
           aria-expanded={isProfileMenuOpen}
           aria-label="Open personal space settings"
           className="w-8 h-8 rounded-full bg-[#1c2226] text-white flex items-center justify-center text-xs font-semibold cursor-pointer hover:ring-2 hover:ring-emerald-400 focus-visible:outline-2 focus-visible:outline-emerald-600 transition shadow-2xs"
-          title={`Personal Space — ${DEMO_USER.displayName}`}
+          title={`Personal Space — ${USER_PROFILE.displayName}`}
         >
-          {DEMO_USER.initials}
+          {USER_PROFILE.initials}
         </button>
 
         {isProfileMenuOpen && (
@@ -403,14 +438,14 @@ export const PersonalSpace: React.FC<PersonalSpaceProps> = ({ isCollapsed = fals
       >
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-[#1c2226] text-white flex items-center justify-center text-xs font-semibold select-none shrink-0 shadow-2xs">
-            {DEMO_USER.initials}
+            {USER_PROFILE.initials}
           </div>
           <div className="flex flex-col text-left">
             <span className="text-xs font-semibold text-gray-900 leading-tight group-hover:text-black">
-              {DEMO_USER.displayName}
+              {USER_PROFILE.displayName}
             </span>
             <span className="text-[11px] text-gray-500 leading-tight">
-              {DEMO_USER.plan}
+              {USER_PROFILE.plan}
             </span>
           </div>
         </div>

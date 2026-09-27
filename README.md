@@ -2,7 +2,7 @@
 
 [![Live Application](https://img.shields.io/badge/Live%20Demo-kaal--ai.onrender.com-10b981?style=for-the-badge&logo=render&logoColor=white)](https://kaal-ai.onrender.com/)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-shravanisdakve%2FKAAL--AI-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
-[![Tests Passing](https://img.shields.io/badge/Tests-98%2F98%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
+[![Tests Passing](https://img.shields.io/badge/Tests-100%2F100%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 **KAAL AI** is a full-stack, emotionally intelligent personal guidance companion inspired by the philosophical wisdom of the Bhagavad Gita and modern reflective psychology.
@@ -159,7 +159,7 @@ Score = 0.40(Semantic Similarity)
 
 ---
 
-## 🧪 Automated Test Suite (98 Tests)
+## 🧪 Automated Test Suite (100 Tests)
 
 The test suite covers the complete application contract deterministically:
 
@@ -168,7 +168,7 @@ npm test
 ```
 
 ```text
-📊 Test Results: 98 passed, 0 failed.
+📊 Test Results: 100 passed, 0 failed.
 ```
 
 ### Coverage Highlights:
@@ -178,6 +178,8 @@ npm test
 * **Structured Classifier:** Verifies exact intent classification (`career_confusion`, `self_worth`, `outcome_attachment`, `procrastination`, `grief`, `overwhelm`).
 * **RAG Precision & 0.70 Gate:** Validates correct shloka retrieval (e.g., BG 2.47 for outcome attachment, BG 3.35 for life path, BG 3.8 for procrastination) and rejection of inappropriate verses.
 * **Speech Recognition:** Unit tests for browser detection, transcript concatenation, interim/final chunk processing, error mappings, and unmount cleanup.
+* **Theme System:** Verifies persistent Light / Dark mode toggling.
+* **Unified Workspace:** Validates multi-device unified session querying and routing.
 * **Concurrency & Race Conditions:** Validates request ownership, AbortController invalidation, and session isolation.
 
 ---

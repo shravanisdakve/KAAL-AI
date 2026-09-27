@@ -1,6 +1,7 @@
-import React from 'react';
-import { Menu, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Menu, RotateCcw, Sun, Moon } from 'lucide-react';
 import { KaalAvatar } from './KaalAvatar.tsx';
+import { getStoredTheme, toggleTheme, Theme } from '../utils/theme.ts';
 
 interface AssistantHeaderProps {
   onToggleSidebar: () => void;
@@ -13,6 +14,25 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onReset,
   isMobile,
 }) => {
+  const [theme, setTheme] = useState<Theme>('light');
+
+  useEffect(() => {
+    setTheme(getStoredTheme());
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ theme: Theme }>;
+      if (customEvent.detail?.theme) {
+        setTheme(customEvent.detail.theme);
+      }
+    };
+    window.addEventListener('kaal-theme-change', handler);
+    return () => window.removeEventListener('kaal-theme-change', handler);
+  }, []);
+
+  const handleToggleTheme = () => {
+    const next = toggleTheme();
+    setTheme(next);
+  };
+
   return (
     <header className="h-14 border-b border-gray-200/80 bg-white/90 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between shrink-0 select-none relative z-30 w-full min-w-0">
       {/* Left: Assistant Branding */}
@@ -47,8 +67,22 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Actions (Clean refresh / new conversation button only) */}
-      <div className="flex items-center gap-2">
+      {/* Right: Actions (Theme Toggle & Clean Refresh) */}
+      <div className="flex items-center gap-1 sm:gap-2">
+        <button
+          type="button"
+          onClick={handleToggleTheme}
+          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? (
+            <Sun size={16} className="text-amber-400" />
+          ) : (
+            <Moon size={16} className="text-gray-500" />
+          )}
+        </button>
+
         <button
           onClick={onReset}
           className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition cursor-pointer"

@@ -310,10 +310,11 @@ class DatabaseManager {
     await this.init();
 
     if (this.isPostgresAvailable && this.pool) {
-      const query = sessionId
-        ? 'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions WHERE session_id = $1 ORDER BY created_at DESC'
-        : 'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions ORDER BY created_at DESC';
-      const params = sessionId ? [sessionId] : [];
+      const isUnified = !sessionId || sessionId === 'kaal_unified_user';
+      const query = isUnified
+        ? 'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions ORDER BY created_at DESC'
+        : 'SELECT id, session_id, question, category, response, created_at FROM guidance_sessions WHERE session_id = $1 ORDER BY created_at DESC';
+      const params = isUnified ? [] : [sessionId];
       const res = await this.pool.query(query, params);
 
       return res.rows.map((row) => {
@@ -344,7 +345,7 @@ class DatabaseManager {
     // Degraded local store
     return [...this.localStore]
       .filter((item) => {
-        if (!sessionId) return true;
+        if (!sessionId || sessionId === 'kaal_unified_user') return true;
         return item.sessionId === sessionId || !item.sessionId;
       })
       .map((item) => {
@@ -417,10 +418,11 @@ class DatabaseManager {
     await this.init();
 
     if (this.isPostgresAvailable && this.pool) {
-      const query = sessionId
-        ? 'DELETE FROM guidance_sessions WHERE id = $1 AND (session_id = $2 OR session_id IS NULL)'
-        : 'DELETE FROM guidance_sessions WHERE id = $1';
-      const params = sessionId ? [id, sessionId] : [id];
+      const isUnified = !sessionId || sessionId === 'kaal_unified_user';
+      const query = isUnified
+        ? 'DELETE FROM guidance_sessions WHERE id = $1'
+        : 'DELETE FROM guidance_sessions WHERE id = $1 AND (session_id = $2 OR session_id IS NULL)';
+      const params = isUnified ? [id] : [id, sessionId];
       const res = await this.pool.query(query, params);
       return (res.rowCount ?? 0) > 0;
     }
@@ -428,7 +430,7 @@ class DatabaseManager {
     const initialLen = this.localStore.length;
     this.localStore = this.localStore.filter((item) => {
       if (item.id !== id) return true;
-      if (sessionId && item.sessionId && item.sessionId !== sessionId) return true;
+      if (sessionId && sessionId !== 'kaal_unified_user' && item.sessionId && item.sessionId !== sessionId) return true;
       return false;
     });
     const deletedInLocal = this.localStore.length < initialLen;
@@ -443,7 +445,7 @@ class DatabaseManager {
     await this.init();
 
     if (this.isPostgresAvailable && this.pool) {
-      if (sessionId) {
+      if (sessionId && sessionId !== 'kaal_unified_user') {
         await this.pool.query('DELETE FROM guidance_sessions WHERE session_id = $1', [sessionId]);
       } else {
         await this.pool.query('DELETE FROM guidance_sessions');
@@ -451,7 +453,7 @@ class DatabaseManager {
       return true;
     }
 
-    if (sessionId) {
+    if (sessionId && sessionId !== 'kaal_unified_user') {
       this.localStore = this.localStore.filter((item) => item.sessionId !== sessionId);
     } else {
       this.localStore = [];
