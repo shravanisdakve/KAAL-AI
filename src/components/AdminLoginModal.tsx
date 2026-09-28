@@ -103,7 +103,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                 placeholder="Enter admin username"
                 required
                 autoFocus
-                className="w-full pl-9 pr-4 py-2.5 bg-[#181822] border border-[#2a2a3c] focus:border-amber-400 rounded-xl text-white text-sm outline-none transition placeholder-gray-500"
+                className="w-full pl-9 pr-4 py-2.5 bg-[#181822] border border-[#2a2a3c] focus:border-amber-400 rounded-xl text-white text-base sm:text-sm outline-none transition placeholder-gray-500"
               />
             </div>
           </div>
@@ -122,7 +122,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
                 required
-                className="w-full pl-9 pr-4 py-2.5 bg-[#181822] border border-[#2a2a3c] focus:border-amber-400 rounded-xl text-white text-sm outline-none transition placeholder-gray-500"
+                className="w-full pl-9 pr-4 py-2.5 bg-[#181822] border border-[#2a2a3c] focus:border-amber-400 rounded-xl text-white text-base sm:text-sm outline-none transition placeholder-gray-500"
               />
             </div>
           </div>

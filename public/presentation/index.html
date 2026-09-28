@@ -693,9 +693,247 @@
       transition: all 0.6s ease;
     }
 
+  
+    /* ========================================================
+       COMPREHENSIVE MOBILE RESPONSIVE UI SYSTEM
+       ======================================================== */
+    /* Mobile Top Bar */
+    #mobile-header {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: rgba(18, 18, 23, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 16px;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 950;
+    }
+
+    .mobile-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mobile-hamburger-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .mobile-hamburger-btn:active {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Mobile Backdrop */
+    #sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1050;
+    }
+
+    #sidebar-backdrop.active {
+      display: block;
+    }
+
+    /* TABLE / DIAGRAM SWIPE HINT ON MOBILE */
+    .mobile-scroll-hint {
+      display: none;
+      font-size: 0.72rem;
+      color: var(--accent-gold);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1024px) {
+      #mobile-header { display: flex; }
+      .mobile-scroll-hint { display: block; }
+
+      body {
+        flex-direction: column;
+      }
+
+      /* Sidebar as Off-Canvas Drawer */
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: -320px;
+        width: 300px;
+        height: 100vh;
+        z-index: 1100;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+        transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .sidebar.mobile-open {
+        left: 0;
+      }
+
+      /* Main Content adjustments */
+      .main-content {
+        padding: 76px 16px 160px;
+        max-width: 100vw;
+        overflow-x: hidden;
+      }
+
+      .hero {
+        padding: 24px 18px;
+        margin-bottom: 32px;
+      }
+
+      .hero h1 {
+        font-size: 1.85rem;
+        line-height: 1.25;
+      }
+
+      .hero p {
+        font-size: 0.95rem;
+      }
+
+      .section-header h2 {
+        font-size: 1.4rem;
+      }
+
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .card {
+        padding: 18px 16px;
+      }
+
+      /* Table horizontal scrolling on touch */
+      .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      table {
+        min-width: 650px;
+      }
+
+      /* Diagram horizontal touch scroll */
+      .diagram-wrapper {
+        padding: 16px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+      }
+
+      svg.arch-svg {
+        min-width: 750px;
+      }
+
+      /* MINI MOBILE RESPONSIVENESS */
+      #mini-flight-rig {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 75px !important;
+        right: 16px !important;
+        left: auto !important;
+        z-index: 1005;
+      }
+
+      #mini-sprite {
+        width: 58px;
+        height: 58px;
+      }
+
+      .mini-face-screen {
+        width: 36px;
+        height: 24px;
+      }
+
+      .mini-eye {
+        width: 6px;
+        height: 9px;
+      }
+
+      /* Speech balloon as mobile floating bottom sheet */
+      #mini-speech-balloon {
+        position: fixed;
+        bottom: 80px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+        padding: 14px 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.95), 0 0 20px rgba(226, 179, 87, 0.3);
+      }
+
+      #mini-speech-balloon::before {
+        display: none;
+      }
+
+      .balloon-text {
+        max-height: 180px;
+        font-size: 0.82rem;
+      }
+
+      /* Bottom HUD on mobile */
+      #mini-hud {
+        bottom: 12px;
+        left: 10px;
+        right: 10px;
+        padding: 6px 10px;
+        gap: 6px;
+        justify-content: space-between;
+      }
+
+      .hud-btn {
+        padding: 5px 9px;
+        font-size: 0.72rem;
+        gap: 4px;
+      }
+
+      .hud-select {
+        padding: 5px 6px;
+        font-size: 0.7rem;
+        max-width: 95px;
+      }
+
+      #hudMicBtn {
+        padding: 5px 8px;
+      }
+
+      /* Prevent iOS Safari input zoom */
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
+
+  <!-- MOBILE TOP BAR -->
+  <header id="mobile-header">
+    <div class="mobile-header-left">
+      <button class="mobile-hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Toggle Menu">
+        ☰
+      </button>
+      <img src="images/icon.png" alt="KAAL Logo" style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--accent-gold);">
+      <span style="font-size: 0.95rem; font-weight: 800; color: #fff;">KAAL AI Defense</span>
+    </div>
+    <span class="badge badge-high" style="font-size: 0.65rem;">INTERVIEW</span>
+  </header>
+
+  <!-- MOBILE SIDEBAR BACKDROP -->
+  <div id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
 
   <!-- SIDEBAR NAVIGATION -->
   <aside class="sidebar">
@@ -857,6 +1095,7 @@ app.get(<span class="code-string">'*'</span>, (_req, res) =&gt; {
         Every single incoming query passes through this strict pipeline. Notice the deterministic priority gates before any vector search or LLM generation.
       </p>
 
+      <div class="mobile-scroll-hint">👉 Swipe horizontally to inspect 7 layers</div>
       <div class="diagram-wrapper">
         <svg class="arch-svg" width="920" height="740" viewBox="0 0 920 740">
           <defs>
@@ -967,6 +1206,7 @@ app.get(<span class="code-string">'*'</span>, (_req, res) =&gt; {
         Here is the definitive inventory of every single file in the repository, organized by domain:
       </p>
 
+      <div class="mobile-scroll-hint">👉 Swipe horizontally to view all columns</div>
       <div class="table-container">
         <table>
           <thead>
