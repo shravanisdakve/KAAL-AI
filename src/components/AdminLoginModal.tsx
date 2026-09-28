@@ -14,40 +14,36 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    try {
-      // Check credentials locally or via API
-      if (username === 'rain' && password === 'snow') {
-        // Save session authentication
-        try {
-          sessionStorage.setItem('kaal_admin_auth', 'true');
-        } catch {}
+    const cleanUser = username.trim().toLowerCase();
+    const cleanPass = password.trim();
 
-        // Call backend API endpoint to register login
-        try {
-          await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-          });
-        } catch {}
+    // Check credentials immediately
+    if (cleanUser === 'rain' && cleanPass === 'snow') {
+      try {
+        sessionStorage.setItem('kaal_admin_auth', 'true');
+        localStorage.setItem('kaal_admin_auth', 'true');
+      } catch {}
 
-        // Redirect to presentation
-        window.location.href = '/presentation';
-        return;
-      }
+      // Fire-and-forget backend notification
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+      }).catch(() => {});
 
-      // If invalid
-      setError('Invalid credentials. Please verify your username and password.');
-      setIsLoading(false);
-    } catch (err) {
-      setError('An error occurred during authentication. Please try again.');
-      setIsLoading(false);
+      // Instant redirection to presentation
+      window.location.assign('/presentation/index.html');
+      return;
     }
+
+    // If invalid
+    setError('Invalid credentials. Please check your username and password.');
+    setIsLoading(false);
   };
 
   return (
