@@ -258,7 +258,7 @@ export const Composer: React.FC<ComposerProps> = ({
       )}
 
       {/* Composer Container Card */}
-      <div className="relative bg-white border border-gray-200/90 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100 transition-all min-w-0">
+      <div className="relative bg-white dark:bg-[#0c1017] border border-gray-200/90 dark:border-[#1a2230] rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs focus-within:border-gray-400 dark:focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-gray-100 dark:focus-within:ring-emerald-950/40 transition-all min-w-0">
         <textarea
           ref={textareaRef}
           value={question}
@@ -270,7 +270,7 @@ export const Composer: React.FC<ComposerProps> = ({
           placeholder={isListening ? 'Listening... speak now' : 'Ask KAAL anything...'}
           disabled={isLoading}
           rows={2}
-          className="w-full resize-none text-[14px] sm:text-[15px] text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none pr-20 sm:pr-24 leading-relaxed max-h-48"
+          className="w-full resize-none text-[14px] sm:text-[15px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 bg-transparent focus:outline-none pr-20 sm:pr-24 leading-relaxed max-h-48"
         />
 
         {/* Listening Status Badge */}
@@ -290,7 +290,7 @@ export const Composer: React.FC<ComposerProps> = ({
               onClick={toggleVoiceRecording}
               aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
               title={isListening ? 'Listening... (click to stop)' : 'Voice Dictation'}
-              className={`p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer ${
+              className={`p-1.5 sm:p-2 rounded-xl text-gray-400 dark:text-[#94a3b8] hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#121824] transition cursor-pointer ${
                 isListening ? 'text-red-500 bg-red-50 ring-2 ring-red-200 animate-pulse' : ''
               }`}
             >
@@ -305,8 +305,8 @@ export const Composer: React.FC<ComposerProps> = ({
             disabled={isLoading || !question.trim()}
             className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
               question.trim() && !isLoading
-                ? 'bg-[#1c2226] text-white hover:bg-black shadow-xs'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-[#1c2226] dark:bg-emerald-600 text-white hover:bg-black dark:hover:bg-emerald-500 shadow-xs'
+                : 'bg-gray-200 dark:bg-[#182232] text-gray-400 dark:text-gray-600 cursor-not-allowed'
             }`}
             title="Send (Enter)"
           >
@@ -316,7 +316,7 @@ export const Composer: React.FC<ComposerProps> = ({
       </div>
 
       {/* Trust Subtext */}
-      <p className="text-center text-[11px] text-gray-500 mt-2 select-none">
+      <p className="text-center text-[11px] text-gray-500 dark:text-[#94a3b8] mt-2 select-none">
         KAAL AI — Your space for clarity.
       </p>
     </div>

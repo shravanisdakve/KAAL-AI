@@ -380,7 +380,7 @@ export default function App() {
     pendingSubmission.conversationId === activeSessionId;
 
   return (
-    <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#fafbfa] text-gray-900 font-sans antialiased">
+    <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#fafbfa] dark:bg-[#05070b] text-gray-900 dark:text-white font-sans antialiased">
       {/* Left Collapsible History Sidebar */}
       <Sidebar
         sessions={sessions}
@@ -402,7 +402,7 @@ export default function App() {
       />
 
       {/* Main Workspace */}
-      <div className="flex-1 min-w-0 max-w-full flex flex-col h-full overflow-hidden bg-[#fafbfa] relative">
+      <div className="flex-1 min-w-0 max-w-full flex flex-col h-full overflow-hidden bg-[#fafbfa] dark:bg-[#05070b] relative">
         {/* Top Assistant Header */}
         <AssistantHeader
           onToggleSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
@@ -467,7 +467,7 @@ export default function App() {
         </div>
 
         {/* Bottom Question Composer */}
-        <div className="shrink-0 bg-[#fafbfa]/90 backdrop-blur-xs border-t border-gray-100">
+        <div className="shrink-0 bg-[#fafbfa]/90 dark:bg-[#05070b]/95 backdrop-blur-xs border-t border-gray-100 dark:border-[#1a2230]">
           <Composer
             onSubmit={handleSubmitQuestion}
             isLoading={isCurrentConversationLoading}

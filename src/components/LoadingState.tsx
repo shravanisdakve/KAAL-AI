@@ -23,27 +23,27 @@ export const LoadingState: React.FC = () => {
       {/* KAAL Avatar & Thinking Message */}
       <div className="flex items-center gap-3 mb-3 select-none">
         <KaalAvatar size="sm" isThinking={true} />
-        <span className="font-semibold text-gray-900 text-sm tracking-tight">
+        <span className="font-semibold text-gray-900 dark:text-white text-sm tracking-tight">
           KAAL AI
         </span>
-        <span className="text-xs text-gray-400">Evaluating...</span>
+        <span className="text-xs text-gray-400 dark:text-[#94a3b8]">Evaluating...</span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs">
+      <div className="bg-white dark:bg-[#0c1017] rounded-2xl border border-gray-200/80 dark:border-[#1a2230] p-6 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-sm font-medium text-gray-800">
+          <span className="text-sm font-medium text-gray-800 dark:text-white">
             Thinking through your question...
           </span>
         </div>
 
         {/* Rule-based analysis step progress */}
-        <div className="mt-3.5 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+        <div className="mt-3.5 pt-3 border-t border-gray-100 dark:border-[#1a2230] flex items-center justify-between text-xs text-gray-500 dark:text-[#94a3b8]">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-medium">
+            <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-800/60 font-medium">
               Rule-Based Guidance Engine
             </span>
-            <span className="text-gray-400">·</span>
+            <span className="text-gray-400 dark:text-gray-600">·</span>
             <span className="italic transition-all duration-300">
               {analysisSteps[stepIndex]}
             </span>

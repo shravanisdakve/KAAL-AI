@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -62,51 +64,52 @@
   html.dark {
     color-scheme: dark;
 
-    /* Semantic Surface & Border Tokens - Calm KAAL Dark Palette */
-    --background: #0b0f15;
-    --sidebar: #0e131b;
-    --surface: #141b24;
-    --surface-elevated: #1a222f;
-    --surface-muted: #192230;
-    --user-bubble: #1a2332;
+    /* Semantic Surface & Border Tokens - True Deep Dark Mode */
+    --background: #05070b;        /* Pure deep obsidian black */
+    --sidebar: #07090e;           /* Completely dark black sidebar */
+    --surface: #0c1017;           /* Main dark card surface */
+    --surface-elevated: #111722;  /* Elevated surface */
+    --surface-muted: #121824;     /* Pill / row background */
+    --user-bubble: #121824;       /* User message bubble */
 
-    --border: #232c3a;
-    --border-subtle: #1c2430;
-    --border-strong: #334054;
+    --border: #1a2230;            /* Subtle dark border */
+    --border-subtle: #121824;
+    --border-strong: #2a374c;
 
-    /* Semantic Text Hierarchy Tokens - Dark Mode */
-    --text-primary: #f3f4f6;      /* Primary: crisp warm white, high-contrast, effortless to read */
-    --text-secondary: #b7c0c8;    /* Secondary: soft gray, comfortable, clearly readable */
-    --text-muted: #89949e;        /* Muted: dimmer gray, NOT invisible (timestamps, placeholders) */
-    --text-faint: #5e6874;        /* Faint: subtle dividers and inactive accents */
-    --text-accent: #34d399;       /* Accent: vibrant KAAL emerald */
-    --text-accent-soft: #6ee7b7;  /* Soft Accent: light mint green */
-    --text-gold: #f6d389;         /* Gita Gold: warm spiritual gold */
-    --text-gold-bright: #fde68a;  /* Gita Sanskrit: luminous warm gold */
-    --text-danger: #fca5a5;       /* Danger: soft rose/red */
-    --text-success: #6ee7b7;      /* Success: clear emerald */
+    /* Semantic Text Hierarchy Tokens - Pure Crisp White */
+    --text-primary: #ffffff;      /* Crisp pure WHITE text! */
+    --text-secondary: #cbd5e1;    /* Very readable soft white/gray */
+    --text-muted: #8896a8;        /* Clearly visible metadata */
+    --text-faint: #57677a;
+
+    --text-accent: #34d399;       /* Bright vibrant KAAL emerald */
+    --text-accent-soft: #6ee7b7;  /* Soft emerald text */
+    --text-gold: #f6d389;         /* Gita gold */
+    --text-gold-bright: #fde68a;  /* Sanskrit text luminous gold */
+    --text-danger: #fca5a5;
+    --text-success: #6ee7b7;
 
     --accent: #34d399;
-    --accent-soft: rgba(16, 185, 129, 0.16);
-    --accent-hover: rgba(16, 185, 129, 0.25);
+    --accent-soft: rgba(16, 185, 129, 0.18);
+    --accent-hover: rgba(16, 185, 129, 0.28);
     --accent-text: #6ee7b7;
 
-    --sidebar-hover: #161e2a;
-    --sidebar-active: rgba(16, 185, 129, 0.18);
-    --sidebar-active-text: #6ee7b7;
+    --sidebar-hover: #121824;
+    --sidebar-active: rgba(16, 185, 129, 0.2);
+    --sidebar-active-text: #ffffff;
 
-    --input: #141b24;
-    --input-border: #263142;
-    --input-placeholder: #89949e;
+    --input: #0c1017;
+    --input-border: #1a2230;
+    --input-placeholder: #8896a8;
 
-    --footer: rgba(11, 15, 21, 0.96);
-    --footer-border: #1c2430;
+    --footer: #05070b;
+    --footer-border: #1a2230;
 
-    --gita-bg: linear-gradient(135deg, #181714 0%, #1d1b17 100%);
-    --gita-border: #3d3527;
+    --gita-bg: linear-gradient(135deg, #110f0c 0%, #15120d 100%);
+    --gita-border: #332917;
     --gita-badge-bg: rgba(217, 164, 65, 0.18);
     --gita-badge-text: #f6d389;
-    --gita-quote-bg: rgba(15, 13, 10, 0.75);
+    --gita-quote-bg: rgba(7, 6, 5, 0.85);
     --gita-sanskrit: #fde68a;
 
     --danger: #fca5a5;
@@ -128,7 +131,7 @@
 }
 
 /* ==========================================================================
-   COHERENT DARK MODE SURFACES & CONTAINERS
+   TRUE DEEP DARK SHELL SURFACES
    ========================================================================== */
 
 /* 1. Global Shell & Main Backgrounds */
@@ -150,7 +153,7 @@ html.dark [class*="bg-[#fbfcfb]"] {
 /* 3. Header */
 html.dark header,
 html.dark .bg-white\/90 {
-  background-color: rgba(14, 19, 27, 0.94) !important;
+  background-color: #07090e !important;
   border-color: var(--border) !important;
 }
 
@@ -184,11 +187,23 @@ html.dark .bg-\[\#f4f5f6\] {
 }
 
 html.dark .bg-slate-200 {
-  background-color: #2b3648 !important;
+  background-color: #1a2230 !important;
   color: var(--text-primary) !important;
 }
 
-/* 8. Comprehensive Border System */
+/* 8. Logo Background in Dark Mode */
+html.dark .bg-\[\#081A2E\] {
+  background-color: #000000 !important;
+  border-color: rgba(217, 164, 65, 0.45) !important;
+}
+
+html.dark .bg-\[\#1c2226\] {
+  background-color: #0c1017 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 9. Comprehensive Border System */
 html.dark .border-gray-100,
 html.dark .border-gray-200,
 html.dark .border-gray-200\/80,
@@ -204,12 +219,11 @@ html.dark .border-gray-300 {
 }
 
 /* ==========================================================================
-   SEMANTIC TEXT HIERARCHY IN DARK MODE
-   Strictly audits every text element across all surfaces
+   SEMANTIC TEXT HIERARCHY IN DARK MODE (BRIGHT WHITE PRIMARY)
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   PRIMARY TEXT (Soft warm white #f3f4f6 — high contrast, effortless to read)
+   PRIMARY TEXT (Crisp Pure White #ffffff — high contrast, effortless to read)
    -------------------------------------------------------------------------- */
 html.dark .text-gray-900,
 html.dark .text-stone-900,
@@ -218,7 +232,7 @@ html.dark textarea {
   color: var(--text-primary) !important;
 }
 
-/* Guidance card paragraphs: The most important body text! NOT gray-on-dark-gray */
+/* Guidance card paragraphs: MUST be bright white */
 html.dark .text-\[14px\].sm\:text-\[15px\].text-gray-800,
 html.dark .text-\[14px\].sm\:text-\[15px\].text-gray-800 p,
 html.dark .text-gray-800.leading-relaxed,
@@ -255,7 +269,7 @@ html.dark .font-semibold.text-gray-900.tracking-tight {
 }
 
 /* --------------------------------------------------------------------------
-   SECONDARY TEXT (Soft gray #b7c0c8 — comfortable, clearly legible)
+   SECONDARY TEXT (Soft White/Gray #cbd5e1 — clearly legible)
    -------------------------------------------------------------------------- */
 html.dark .text-gray-800,
 html.dark .text-stone-800,
@@ -316,7 +330,7 @@ html.dark .bg-\[\#fbf9f5\] p {
 }
 
 /* --------------------------------------------------------------------------
-   MUTED TEXT (Dimmer gray #89949e — timestamps, placeholders, helpers)
+   MUTED TEXT (Dimmer gray #8896a8 — timestamps, placeholders, helpers)
    -------------------------------------------------------------------------- */
 html.dark .text-gray-500,
 html.dark .text-stone-500,
@@ -368,19 +382,19 @@ html.dark .bg-\[\#c5e8d5\] {
 }
 
 html.dark .bg-\[\#c5e8d5\] button {
-  color: var(--text-accent-soft) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Sidebar "New Conversation" Button */
 html.dark button.bg-\[\#c5e8d5\] {
   background-color: var(--accent-soft) !important;
-  color: var(--text-accent-soft) !important;
+  color: var(--text-primary) !important;
   border: 1px solid rgba(52, 211, 153, 0.35) !important;
 }
 
 html.dark button.bg-\[\#c5e8d5\]:hover {
   background-color: var(--accent-hover) !important;
-  color: #a7f3d0 !important;
+  color: #ffffff !important;
 }
 
 /* Next Steps Number Badges: 01 / 02 / 03 */
@@ -434,7 +448,7 @@ html.dark .font-serif.text-gray-900 {
   color: var(--text-gold-bright) !important;
 }
 
-/* Romanized Transliteration: Muted Warm Slate */
+/* Romanized Transliteration: Soft Muted Gray */
 html.dark .font-serif.italic.text-stone-600 {
   color: var(--text-secondary) !important;
 }
@@ -495,20 +509,20 @@ html.dark .focus-within\:ring-gray-100:focus-within {
 
 /* Composer Send Button */
 html.dark button.bg-\[\#1c2226\] {
-  background-color: #202b3a !important;
+  background-color: #1a2230 !important;
   color: var(--text-primary) !important;
-  border: 1px solid #334257 !important;
+  border: 1px solid #2a374c !important;
 }
 
 html.dark button.bg-\[\#1c2226\]:hover {
-  background-color: #2b394d !important;
+  background-color: #243044 !important;
   color: #ffffff !important;
 }
 
 html.dark button.bg-gray-200 {
-  background-color: #141b24 !important;
+  background-color: #0c1017 !important;
   color: var(--text-faint) !important;
-  border: 1px solid #1c2430 !important;
+  border: 1px solid #1a2230 !important;
 }
 
 /* Microphone Button in Composer */
@@ -546,13 +560,13 @@ html.dark .border-amber-200\/80 {
 
 /* Gita Card Surfaces & Insets */
 html.dark .from-\[\#faf8f5\] {
-  --tw-gradient-from: #181714 var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgb(24 23 20 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-from: #110f0c var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(17 15 12 / 0) var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
 html.dark .to-\[\#f5f1ea\] {
-  --tw-gradient-to: #1e1b16 var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #15120d var(--tw-gradient-to-position) !important;
 }
 
 html.dark .border-\[\#e8ded1\],
@@ -568,23 +582,23 @@ html.dark .bg-white\/90 {
 }
 
 html.dark .bg-\[\#fbf9f5\] {
-  background-color: rgba(24, 21, 17, 0.9) !important;
+  background-color: rgba(18, 15, 11, 0.9) !important;
 }
 
 /* Guidance Card Subsection Insets */
 html.dark .bg-stone-50\/90 {
-  background-color: #171f2b !important;
+  background-color: #10151f !important;
   border-color: var(--border) !important;
 }
 
 html.dark .bg-stone-50\/50 {
-  background-color: rgba(25, 34, 48, 0.45) !important;
+  background-color: rgba(18, 24, 36, 0.5) !important;
 }
 
 /* Modals, Popovers & Dialogs */
 html.dark .shadow-xl,
 html.dark .shadow-2xl {
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.75), 0 10px 16px -6px rgba(0, 0, 0, 0.75) !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.85), 0 10px 16px -6px rgba(0, 0, 0, 0.85) !important;
 }
 
 html.dark kbd {

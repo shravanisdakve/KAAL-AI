@@ -42,18 +42,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onSelectPrompt }) => {
       </div>
 
       {/* Small Eyebrow */}
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[11px] font-semibold tracking-widest uppercase mb-4">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold tracking-widest uppercase mb-4">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />
         <span>YOUR SPACE FOR CLARITY</span>
       </div>
 
       {/* Main Heading */}
-      <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight mb-3">
+      <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white tracking-tight mb-3">
         What would you like guidance on today?
       </h1>
 
       {/* Supporting Text */}
-      <p className="text-sm md:text-base text-gray-500 max-w-lg mb-8 leading-relaxed font-normal">
+      <p className="text-sm md:text-base text-gray-500 dark:text-[#94a3b8] max-w-lg mb-8 leading-relaxed font-normal">
         Take a moment, share what's on your mind, and work through it with clarity.
       </p>
 
@@ -65,26 +65,26 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onSelectPrompt }) => {
             <button
               key={idx}
               onClick={() => onSelectPrompt(item.text)}
-              className="group p-4 bg-white hover:bg-[#fafbfa] border border-gray-200/80 hover:border-emerald-300/80 rounded-2xl transition-all shadow-2xs hover:shadow-xs cursor-pointer flex flex-col justify-between"
+              className="group p-4 bg-white dark:bg-[#0c1017] hover:bg-[#fafbfa] dark:hover:bg-[#121824] border border-gray-200/80 dark:border-[#1a2230] hover:border-emerald-300/80 dark:hover:border-emerald-500/50 rounded-2xl transition-all shadow-2xs hover:shadow-xs cursor-pointer flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-gray-50 text-gray-700 flex items-center justify-center group-hover:bg-[#e6f7ef] group-hover:text-[#114936] transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-[#121824] text-gray-700 dark:text-[#cbd5e1] flex items-center justify-center group-hover:bg-[#e6f7ef] dark:group-hover:bg-emerald-950/60 group-hover:text-[#114936] dark:group-hover:text-emerald-300 transition-colors">
                     <IconComponent size={15} />
                   </div>
-                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider group-hover:text-emerald-700">
+                  <span className="text-[10px] font-semibold text-gray-400 dark:text-[#94a3b8] uppercase tracking-wider group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
                     {item.category}
                   </span>
                 </div>
-                <h4 className="text-xs font-semibold text-gray-900 mb-1">
+                <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">
                   {item.title}
                 </h4>
-                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-gray-500 dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">
                   {item.text}
                 </p>
               </div>
 
-              <div className="mt-3 flex items-center gap-1 text-[11px] text-gray-400 group-hover:text-[#114936] font-medium pt-2 border-t border-gray-100">
+              <div className="mt-3 flex items-center gap-1 text-[11px] text-gray-400 dark:text-[#94a3b8] group-hover:text-[#114936] dark:group-hover:text-emerald-400 font-medium pt-2 border-t border-gray-100 dark:border-[#1a2230]">
                 <span>Explore guidance</span>
                 <ArrowUpRight
                   size={12}

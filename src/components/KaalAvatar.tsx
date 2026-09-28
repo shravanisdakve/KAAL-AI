@@ -22,7 +22,7 @@ export const KaalAvatar: React.FC<KaalAvatarProps> = ({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-full bg-[#081A2E] text-white shrink-0 select-none overflow-hidden border border-[#D9A441]/50 shadow-xs ${sizeMap[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-full bg-[#081A2E] dark:bg-black text-white shrink-0 select-none overflow-hidden border border-[#D9A441]/50 dark:border-[#D9A441]/80 shadow-xs ${sizeMap[size]} ${className}`}
       title="KAAL AI"
     >
       {!imageError ? (

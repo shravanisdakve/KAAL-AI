@@ -58,13 +58,13 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-white rounded-2xl border border-stone-200/90 shadow-2xl p-6 w-full max-w-sm select-none"
+        className="relative bg-white dark:bg-[#0c1017] rounded-2xl border border-stone-200/90 dark:border-[#1a2230] shadow-2xl p-6 w-full max-w-sm select-none"
       >
         {/* Close Icon in corner */}
         <button
           type="button"
           onClick={onCancel}
-          className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 text-gray-400 dark:text-[#94a3b8] hover:text-gray-600 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-[#121824] transition cursor-pointer"
           aria-label="Close dialog"
         >
           <X size={16} />
@@ -72,19 +72,19 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
 
         {/* Icon & Details */}
         <div className="flex items-start gap-3.5 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100/80">
+          <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-rose-950/60 text-red-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-red-100/80 dark:border-rose-900/60">
             {isAll ? <AlertTriangle size={20} /> : <Trash2 size={20} />}
           </div>
           <div className="pr-4">
             <h3
               id="delete-dialog-title"
-              className="text-base font-semibold text-gray-900 leading-snug"
+              className="text-base font-semibold text-gray-900 dark:text-white leading-snug"
             >
               {title}
             </h3>
             <p
               id="delete-dialog-description"
-              className="text-xs text-gray-500 leading-relaxed mt-1"
+              className="text-xs text-gray-500 dark:text-[#cbd5e1] leading-relaxed mt-1"
             >
               {description}
             </p>
@@ -96,7 +96,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200/90 rounded-xl transition cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gray-400"
+            className="px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#121824] hover:bg-gray-200/90 dark:hover:bg-[#1a2230] rounded-xl transition cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gray-400"
           >
             Cancel
           </button>

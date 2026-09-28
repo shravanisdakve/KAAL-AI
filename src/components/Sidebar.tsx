@@ -80,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     return (
       <div className="mb-6">
-        <h3 className="px-3 mb-2 text-[11px] font-semibold tracking-wider text-gray-400 uppercase select-none">
+        <h3 className="px-3 mb-2 text-[11px] font-semibold tracking-wider text-gray-400 dark:text-[#94a3b8] uppercase select-none">
           {label}
         </h3>
         <div className="space-y-1">
@@ -91,8 +91,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={session.id}
                 className={`group relative flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors select-none ${
                   isActive
-                    ? 'bg-[#c5e8d5] text-[#114936] font-medium'
-                    : 'text-gray-700 hover:bg-gray-100 font-normal'
+                    ? 'bg-[#c5e8d5] dark:bg-[#064e3b]/80 text-[#114936] dark:text-[#a7f3d0] font-medium'
+                    : 'text-gray-700 dark:text-[#cbd5e1] hover:bg-gray-100 dark:hover:bg-[#121824] dark:hover:text-white font-normal'
                 }`}
               >
                 <button
@@ -115,8 +115,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }}
                   className={`opacity-0 group-hover:opacity-100 p-1 rounded-md transition-opacity cursor-pointer shrink-0 ${
                     isActive
-                      ? 'text-[#114936] hover:bg-[#b0decd]'
-                      : 'text-gray-400 hover:text-red-600 hover:bg-gray-200/60'
+                      ? 'text-[#114936] dark:text-[#a7f3d0] hover:bg-[#b0decd] dark:hover:bg-[#065f46]'
+                      : 'text-gray-400 dark:text-[#94a3b8] hover:text-red-600 dark:hover:text-rose-400 hover:bg-gray-200/60 dark:hover:bg-rose-950/40'
                   }`}
                   title="Delete chat"
                   aria-label="Delete chat"
@@ -144,9 +144,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isMobile, isOpen, onCloseMobile]);
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#fbfcfb] border-r border-gray-200/80 w-full select-none">
+    <div className="flex flex-col h-full bg-[#fbfcfb] dark:bg-[#07090e] border-r border-gray-200/80 dark:border-[#1a2230] w-full select-none">
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-[#1a2230]">
         <button
           type="button"
           onClick={() => {
@@ -154,15 +154,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             if (isMobile) onCloseMobile();
           }}
           aria-label="Go to KAAL AI home"
-          className="flex items-center gap-2.5 p-1.5 -ml-1.5 rounded-xl hover:bg-gray-100/80 active:bg-gray-200/60 transition cursor-pointer text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/50 group"
+          className="flex items-center gap-2.5 p-1.5 -ml-1.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-[#121824] active:bg-gray-200/60 dark:active:bg-[#182232] transition cursor-pointer text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/50 group"
           title="Go to KAAL AI home"
         >
           <KaalAvatar size="sm" />
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-900 tracking-tight text-sm leading-none group-hover:text-black">
+            <span className="font-semibold text-gray-900 dark:text-white tracking-tight text-sm leading-none group-hover:text-black dark:group-hover:text-white">
               KAAL AI
             </span>
-            <span className="text-[10px] text-gray-500 font-normal leading-tight mt-0.5 group-hover:text-gray-700">
+            <span className="text-[10px] text-gray-500 dark:text-[#94a3b8] font-normal leading-tight mt-0.5 group-hover:text-gray-700 dark:group-hover:text-gray-300">
               Your space for clarity
             </span>
           </div>
@@ -172,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="p-2 -mr-1 text-gray-500 hover:text-gray-900 active:bg-gray-100 rounded-lg transition cursor-pointer touch-manipulation flex items-center justify-center"
+            className="p-2 -mr-1 text-gray-500 dark:text-[#94a3b8] hover:text-gray-900 dark:hover:text-white active:bg-gray-100 dark:active:bg-[#121824] rounded-lg transition cursor-pointer touch-manipulation flex items-center justify-center"
             aria-label="Close menu"
           >
             <X size={19} />
@@ -181,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onToggle}
-            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+            className="p-1.5 text-gray-400 dark:text-[#94a3b8] hover:text-gray-700 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-[#121824] transition cursor-pointer"
             title="Collapse sidebar"
           >
             <PanelLeftClose size={18} />
@@ -197,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onNewConversation();
             if (isMobile) onCloseMobile();
           }}
-          className="w-full bg-[#c5e8d5] hover:bg-[#b5dec7] text-[#114936] font-medium text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
+          className="w-full bg-[#c5e8d5] dark:bg-[#064e3b] hover:bg-[#b5dec7] dark:hover:bg-[#065f46] text-[#114936] dark:text-[#a7f3d0] font-medium text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
         >
           <Plus size={16} strokeWidth={2.2} />
           <span>New Conversation</span>
@@ -208,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={() => setIsClearAllModalOpen(true)}
-            className="w-full text-xs text-gray-500 hover:text-red-600 hover:bg-red-50/60 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
+            className="w-full text-xs text-gray-500 dark:text-[#94a3b8] hover:text-red-600 dark:hover:text-rose-400 hover:bg-red-50/60 dark:hover:bg-rose-950/40 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
             <Trash2 size={13} />
             <span>Clear All History</span>
@@ -223,14 +223,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {renderGroup('Earlier', earlier)}
 
         {sessions.length === 0 && (
-          <div className="px-3 py-6 text-center text-xs text-gray-400">
+          <div className="px-3 py-6 text-center text-xs text-gray-400 dark:text-[#94a3b8]">
             No previous conversations yet.
           </div>
         )}
       </div>
 
       {/* Personal Space Rail Footer Card */}
-      <div className="p-3 border-t border-gray-200/80 mt-auto bg-transparent">
+      <div className="p-3 border-t border-gray-200/80 dark:border-[#1a2230] mt-auto bg-transparent">
         <PersonalSpace isCollapsed={false} />
       </div>
     </div>
@@ -277,7 +277,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-hidden="true"
           />
           {/* Drawer panel */}
-          <div className="relative z-10 h-full w-72 max-w-[85vw] shadow-2xl bg-[#fbfcfb] flex flex-col">
+          <div className="relative z-10 h-full w-72 max-w-[85vw] shadow-2xl bg-[#fbfcfb] dark:bg-[#07090e] flex flex-col">
             {sidebarContent}
           </div>
         </div>
@@ -285,11 +285,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Desktop Collapsed Rail */}
       {!isMobile && !isOpen && (
-        <div className="w-14 h-full bg-[#fbfcfb] border-r border-gray-200/80 flex flex-col items-center py-4 select-none shrink-0 transition-all">
+        <div className="w-14 h-full bg-[#fbfcfb] dark:bg-[#07090e] border-r border-gray-200/80 dark:border-[#1a2230] flex flex-col items-center py-4 select-none shrink-0 transition-all">
           <button
             type="button"
             onClick={onToggle}
-            className="p-2 text-gray-500 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition mb-4 cursor-pointer"
+            className="p-2 text-gray-500 dark:text-[#94a3b8] hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-[#121824] transition mb-4 cursor-pointer"
             title="Expand sidebar"
           >
             <PanelLeftOpen size={18} />
@@ -298,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onNewConversation}
-            className="p-2.5 bg-[#c5e8d5] text-[#114936] rounded-xl hover:bg-[#b5dec7] transition shadow-2xs mb-4 cursor-pointer"
+            className="p-2.5 bg-[#c5e8d5] dark:bg-[#064e3b] text-[#114936] dark:text-[#a7f3d0] rounded-xl hover:bg-[#b5dec7] dark:hover:bg-[#065f46] transition shadow-2xs mb-4 cursor-pointer"
             title="New Conversation"
           >
             <Plus size={16} strokeWidth={2.2} />
