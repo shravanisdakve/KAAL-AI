@@ -2,7 +2,7 @@
 
 [![Live Application](https://img.shields.io/badge/Live%20Demo-kaal--ai.onrender.com-10b981?style=for-the-badge&logo=render&logoColor=white)](https://kaal-ai.onrender.com/)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-shravanisdakve%2FKAAL--AI-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
-[![Tests Passing](https://img.shields.io/badge/Tests-100%2F100%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
+[![Tests Passing](https://img.shields.io/badge/Tests-102%2F102%20Passing-success?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/shravanisdakve/KAAL-AI)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 **KAAL AI** is a full-stack, emotionally intelligent personal guidance companion inspired by the philosophical wisdom of the Bhagavad Gita and modern reflective psychology.
@@ -15,6 +15,7 @@ Unlike standard chatbots that blindly quote scripture on every turn, KAAL AI fea
 
 * **Live Deployed Application:** [https://kaal-ai.onrender.com/](https://kaal-ai.onrender.com/)
 * **Live Health Endpoint:** [https://kaal-ai.onrender.com/api/health](https://kaal-ai.onrender.com/api/health)
+* **Technical Presentation & Defense:** [https://kaal-ai.onrender.com/presentation](https://kaal-ai.onrender.com/presentation) (Access via `SD` button with credentials `rain` / `snow`)
 * **GitHub Repository:** [https://github.com/shravanisdakve/KAAL-AI](https://github.com/shravanisdakve/KAAL-AI)
 * **Concept Inspiration:** [KAAL AI Official Website](https://www.kaalai.in/)
 

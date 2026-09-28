@@ -8,6 +8,7 @@ import { EmptyState } from './components/EmptyState.tsx';
 import { LoadingState } from './components/LoadingState.tsx';
 import { ErrorState } from './components/ErrorState.tsx';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal.tsx';
+import { AdminLoginModal } from './components/AdminLoginModal.tsx';
 import { ApiError, GuidanceSession } from './types/guidance.ts';
 import {
   askGuidance,
@@ -57,6 +58,9 @@ export default function App() {
 
   // Shortcuts modal
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+
+  // Admin login modal
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   // Scroll ref
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -408,6 +412,7 @@ export default function App() {
           onToggleSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           onReset={handleNewConversation}
           isMobile={isMobile}
+          onOpenAdmin={() => setIsAdminModalOpen(true)}
         />
 
         {/* Scrollable Conversation Content Area */}
@@ -481,6 +486,12 @@ export default function App() {
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
         onNewConversation={handleNewConversation}
+      />
+
+      {/* Admin Defense Login Modal (SD) */}
+      <AdminLoginModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
       />
     </div>
   );

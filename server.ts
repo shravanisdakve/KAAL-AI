@@ -6,6 +6,7 @@ import { guidanceRouter } from './server/routes/guidance.ts';
 import { historyRouter } from './server/routes/history.ts';
 import { errorHandler } from './server/middleware/errorHandler.ts';
 import { dbClient } from './server/db/client.ts';
+import { adminRouter } from './server/routes/admin.ts';
 
 dotenv.config();
 
@@ -31,6 +32,14 @@ app.get('/api/health', (_req, res) => {
 // Mount application REST endpoints
 app.use('/api/guidance', guidanceRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/admin', adminRouter);
+
+// Serve presentation directory directly
+const presentationPath = path.resolve(__dirname, 'presentation');
+app.use('/presentation', express.static(presentationPath));
+app.get('/presentation*', (_req, res) => {
+  res.sendFile(path.resolve(presentationPath, 'index.html'));
+});
 
 // Global Error Handler for API routes
 app.use(errorHandler);

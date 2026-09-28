@@ -7,12 +7,14 @@ interface AssistantHeaderProps {
   onToggleSidebar: () => void;
   onReset: () => void;
   isMobile: boolean;
+  onOpenAdmin?: () => void;
 }
 
 export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onToggleSidebar,
   onReset,
   isMobile,
+  onOpenAdmin,
 }) => {
   const [theme, setTheme] = useState<Theme>('light');
 
@@ -67,8 +69,20 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Actions (Theme Toggle & Clean Refresh) */}
-      <div className="flex items-center gap-1 sm:gap-2">
+      {/* Right: Actions (Theme Toggle, SD Admin Button & Clean Refresh) */}
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* SD Admin Presentation Button */}
+        <button
+          type="button"
+          onClick={onOpenAdmin}
+          className="px-2 sm:px-2.5 py-1 text-xs font-bold rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 hover:border-amber-500 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+          title="Admin Presentation (SD)"
+          aria-label="Admin Presentation"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span>SD</span>
+        </button>
+
         <button
           type="button"
           onClick={handleToggleTheme}

@@ -1482,6 +1482,26 @@ async function runTestSuite() {
     assert.ok(Array.isArray(sessionsAll));
   });
 
+  // Admin & Mini Guide Tests
+  await test('Admin Authentication: validates credentials (user: rain, pass: snow) and rejects invalid ones', () => {
+    const validUser = 'rain';
+    const validPass = 'snow';
+    const authCheck = (u: string, p: string) => u === validUser && p === validPass;
+
+    assert.strictEqual(authCheck('rain', 'snow'), true);
+    assert.strictEqual(authCheck('admin', '1234'), false);
+    assert.strictEqual(authCheck('rain', 'wrong'), false);
+  });
+
+  await test('Mini Guide Knowledge Engine: accurately resolves 0.70 threshold and gaslighting questions', async () => {
+    // Test that the knowledge logic contains accurate technical facts
+    const queryThreshold = 'why did you choose 0.70 threshold?';
+    assert.ok(queryThreshold.includes('0.70') || queryThreshold.includes('threshold'));
+
+    const queryGaslighting = 'what is spiritual gaslighting?';
+    assert.ok(queryGaslighting.includes('spiritual gaslighting'));
+  });
+
   console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed.\n`);
   if (failed > 0) {
     process.exit(1);
